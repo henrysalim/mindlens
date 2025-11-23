@@ -24,6 +24,10 @@ android {
         localProperties.getProperty("POSTGRES_PASSWORD") ?: error("POSTGRES_PASSWORD not found in local.properties")
     val supabaseAnonKey: String =
         localProperties.getProperty("SUPABASE_ANON_KEY") ?: error("SUPABASE_ANON_KEY not found in local.properties")
+    val webGoogleClientID: String =
+        localProperties.getProperty("WEB_GOOGLE_CLIENT_ID") ?: error("WEB_GOOGLE_CLIENT_ID not found in local.properties")
+    val androidGoogleClientID: String =
+        localProperties.getProperty("ANDROID_GOOGLE_CLIENT_ID") ?: error("ANDROID_GOOGLE_CLIENT_ID not found in local.properties")
 
     buildFeatures {
         viewBinding = true
@@ -48,11 +52,15 @@ android {
             buildConfigField("String", "SUPABASE_URL", "$supabaseUrl")
             buildConfigField("String", "POSTGRES_PASSWORD", "$postgresPassword")
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
+            buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
+            buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
         }
         debug {
             buildConfigField("String", "SUPABASE_URL", "$supabaseUrl")
             buildConfigField("String", "POSTGRES_PASSWORD", "$postgresPassword")
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
+            buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
+            buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
 
         }
     }
@@ -87,21 +95,34 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview:1.9.5")
     debugImplementation("androidx.compose.ui:ui-tooling:1.9.5")
     implementation("androidx.activity:activity-compose:1.12.0")
-
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0") // or latest version
 
     // serializer
-    implementation("io.github.jan-tennert.supabase:serializer-moshi:3.2.6")
-    // Google Sign-In
-    implementation("io.github.jan-tennert.supabase:auth-kt:3.2.6")
-    // Supabase
-    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.6"))
-    implementation("io.github.jan-tennert.supabase:postgrest-kt:1.4.7")
-    implementation("io.github.jan-tennert.supabase:gotrue-kt:1.4.7")
-    implementation("io.github.jan-tennert.supabase:realtime-kt:1.4.7")
+    implementation("io.github.jan-tennert.supabase:serializer-moshi:3.0.2")
 
-    // Ktor for HTTP requests
-    implementation("io.ktor:ktor-client-android:2.3.7")
-    implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
+    // Google Sign-In
+    implementation("androidx.credentials:credentials:1.5.0")
+    implementation ("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    // for android 13 and below
+    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
+    implementation("io.github.jan-tennert.supabase:auth-kt:3.0.2")
+
+    // Supabase
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.0.2"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:3.0.2")
+    implementation("io.github.jan-tennert.supabase:auth-kt:3.0.2")
+    implementation("io.github.jan-tennert.supabase:realtime-kt:3.0.2")
+
+    // Compose Helpers
+    implementation("io.github.jan-tennert.supabase:compose-auth:3.0.2")
+    implementation("io.github.jan-tennert.supabase:compose-auth-ui:3.0.2")
+
+    // KTOR
+    implementation("io.ktor:ktor-client-android:3.0.1")
+    implementation("io.ktor:ktor-client-core:3.0.1")
+    implementation("io.ktor:ktor-client-cio:3.0.1")
+    implementation("io.ktor:ktor-client-content-negotiation:3.0.1")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.1")
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.9.6")

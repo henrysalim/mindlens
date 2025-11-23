@@ -8,9 +8,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.projectwithcompose.screens.main.MainScreen
+import com.example.projectwithcompose.screens.auth.RegisterOptionsScreen
+import com.example.projectwithcompose.screens.main.HomeScreen
 import com.example.projectwithcompose.screens.splash.OnboardingScreen
 import com.example.projectwithcompose.screens.splash.SplashScreen
 import com.example.projectwithcompose.ui.DailyDiaryTheme
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,12 +31,17 @@ class MainActivity : ComponentActivity() {
 object Routes {
     const val Splash = "splash"
     const val Onboarding = "onboarding"
-    const val MainApp = "main_app" // Ganti nama route 'Home' jadi 'MainApp' biar jelas
+    const val Home = "home"
+    const val MainApp = "main_app"
+    const val RegisterOptions = "register-options"
+    const val EmailRegister = "email-register"
 }
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    var emailVal = ""
+    var passwordVal = ""
 
     NavHost(navController = navController, startDestination = Routes.Splash) {
 
@@ -53,18 +61,24 @@ fun AppNavigation() {
         composable(Routes.Onboarding) {
             OnboardingScreen(
                 onOnboardingFinished = {
-                    // Masuk ke Aplikasi Utama (MainScreen) dan hapus onboarding dari history
-                    navController.navigate(Routes.MainApp) {
+                    // Navigate to Home and pop onboarding off backstack
+                    navController.navigate(Routes.RegisterOptions) {
                         popUpTo(Routes.Onboarding) { inclusive = true }
                     }
                 }
             )
         }
+        // 3. Register Options (Layar Auth Teman)
+        composable(Routes.RegisterOptions) {
+            // Pastikan di dalam codingan teman (RegisterOptionsScreen), 
+            // kalau login sukses navigasinya ke arah "main_app" (Routes.MainApp)
+            RegisterOptionsScreen(
+                navController = navController
+            )
+        }
 
-        // 3. Main App Route (Wadah Utama dengan Navbar)
+        // 4. Main App (Dashboard Kamu dengan Navbar)
         composable(Routes.MainApp) {
-            // PENTING: Di sini kita panggil MainScreen(), BUKAN HomeScreen().
-            // MainScreen() yang akan mengatur BottomBar dan menampilkan HomeScreen di dalamnya.
             MainScreen()
         }
     }

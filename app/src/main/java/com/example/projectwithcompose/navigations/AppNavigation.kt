@@ -1,43 +1,49 @@
 package com.example.projectwithcompose.navigations
 
-import RegisterOptionsScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.projectwithcompose.screens.auth.EmailRegisterScreen
+import com.example.projectwithcompose.Routes
+import com.example.projectwithcompose.screens.auth.RegisterOptionsScreen
+import com.example.projectwithcompose.screens.main.HomeScreen
+import com.example.projectwithcompose.screens.splash.OnboardingScreen
+import com.example.projectwithcompose.screens.splash.SplashScreen
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "register_options") {
+    NavHost(navController = navController, startDestination = Routes.Splash) {
 
-        // 1. The Social Login Screen (From your previous screenshot)
-        composable("register_options") {
-            RegisterOptionsScreen(
-                onEmailClick = { navController.navigate("register_email") }
+        // 1. Splash
+        composable(Routes.Splash) {
+            SplashScreen(
+                navController = navController
             )
         }
 
-        // 2. The New Email Form Screen (Your new screenshot)
-        composable("register_email") {
-            EmailRegisterScreen(
-                onLoginClick = {
-                    navController.navigate("login")
-                },
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-
-        // 3. The Login Screen (Placeholder)
-        composable("login") {
-            // Replace this with your actual Login Screen later
-            RegisterOptionsScreen(
-                onEmailClick = {
-                    navController.navigate("register_email")
+        // 2. Onboarding
+        composable(Routes.Onboarding) {
+            OnboardingScreen(
+                onOnboardingFinished = {
+                    navController.navigate(Routes.RegisterOptions) {
+                        popUpTo(Routes.Onboarding) { inclusive = true }
+                    }
                 }
             )
+        }
+
+        // 3. Auth (NEW)
+        composable(Routes.RegisterOptions) {
+            RegisterOptionsScreen(
+                navController = navController,
+            )
+        }
+
+        // 4. Home
+        composable(Routes.Home) {
+            HomeScreen() // Your main app content
         }
     }
 }
