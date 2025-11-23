@@ -7,30 +7,28 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.projectwithcompose.screens.main.HomeScreen
+import com.example.projectwithcompose.screens.main.MainScreen
 import com.example.projectwithcompose.screens.splash.OnboardingScreen
 import com.example.projectwithcompose.screens.splash.SplashScreen
 import com.example.projectwithcompose.ui.DailyDiaryTheme
-
-// Import the composables and data classes you just created above
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Apply your app theme here if you have one
-            DailyDiaryTheme {
+            // Gunakan Theme baru kita (dynamicColor = false agar warna hijau konsisten)
+            DailyDiaryTheme(dynamicColor = false) {
                 AppNavigation()
             }
         }
     }
 }
 
-// Define your route names
+// Definisi Route Sederhana untuk alur awal (Splash -> Onboarding -> Main App)
 object Routes {
     const val Splash = "splash"
     const val Onboarding = "onboarding"
-    const val Home = "home" // Where you go after onboarding
+    const val MainApp = "main_app" // Ganti nama route 'Home' jadi 'MainApp' biar jelas
 }
 
 @Composable
@@ -39,11 +37,11 @@ fun AppNavigation() {
 
     NavHost(navController = navController, startDestination = Routes.Splash) {
 
-        // 1. Splash Route
+        // 1. Splash Screen Route
         composable(Routes.Splash) {
             SplashScreen(
                 onSplashFinished = {
-                    // Pop splash off backstack so back button doesn't return to it
+                    // Hapus Splash dari backstack agar tidak bisa kembali ke splash
                     navController.navigate(Routes.Onboarding) {
                         popUpTo(Routes.Splash) { inclusive = true }
                     }
@@ -51,22 +49,23 @@ fun AppNavigation() {
             )
         }
 
-        // 2. Onboarding Route
+        // 2. Onboarding Screen Route
         composable(Routes.Onboarding) {
             OnboardingScreen(
                 onOnboardingFinished = {
-                    // Navigate to Home and pop onboarding off backstack
-                    navController.navigate(Routes.Home) {
+                    // Masuk ke Aplikasi Utama (MainScreen) dan hapus onboarding dari history
+                    navController.navigate(Routes.MainApp) {
                         popUpTo(Routes.Onboarding) { inclusive = true }
                     }
                 }
             )
         }
 
-        // 3. Your actual App Home Screen Route
-        composable(Routes.Home) {
-            // Replace this with your actual Home Screen Composable
-            HomeScreen()
+        // 3. Main App Route (Wadah Utama dengan Navbar)
+        composable(Routes.MainApp) {
+            // PENTING: Di sini kita panggil MainScreen(), BUKAN HomeScreen().
+            // MainScreen() yang akan mengatur BottomBar dan menampilkan HomeScreen di dalamnya.
+            MainScreen()
         }
     }
 }
