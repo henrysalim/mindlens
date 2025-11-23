@@ -7,18 +7,18 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.projectwithcompose.screens.auth.RegisterOptionsScreen
 import com.example.projectwithcompose.screens.main.HomeScreen
 import com.example.projectwithcompose.screens.splash.OnboardingScreen
 import com.example.projectwithcompose.screens.splash.SplashScreen
 import com.example.projectwithcompose.ui.DailyDiaryTheme
 
-// Import the composables and data classes you just created above
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Apply your app theme here if you have one
+            // Apply the app theme
             DailyDiaryTheme {
                 AppNavigation()
             }
@@ -26,28 +26,27 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Define your route names
+// Define route names
 object Routes {
     const val Splash = "splash"
     const val Onboarding = "onboarding"
-    const val Home = "home" // Where you go after onboarding
+    const val Home = "home"
+    const val RegisterOptions = "register-options"
+    const val EmailRegister = "email-register"
 }
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    var emailVal = ""
+    var passwordVal = ""
 
     NavHost(navController = navController, startDestination = Routes.Splash) {
 
         // 1. Splash Route
         composable(Routes.Splash) {
             SplashScreen(
-                onSplashFinished = {
-                    // Pop splash off backstack so back button doesn't return to it
-                    navController.navigate(Routes.Onboarding) {
-                        popUpTo(Routes.Splash) { inclusive = true }
-                    }
-                }
+                navController = navController,
             )
         }
 
@@ -56,16 +55,22 @@ fun AppNavigation() {
             OnboardingScreen(
                 onOnboardingFinished = {
                     // Navigate to Home and pop onboarding off backstack
-                    navController.navigate(Routes.Home) {
+                    navController.navigate(Routes.RegisterOptions) {
                         popUpTo(Routes.Onboarding) { inclusive = true }
                     }
                 }
             )
         }
 
-        // 3. Your actual App Home Screen Route
+        // 3. handle auth
+        composable(Routes.RegisterOptions) {
+            RegisterOptionsScreen(
+                navController = navController,
+            )
+        }
+
+        // 4. Actual App Home Screen Route
         composable(Routes.Home) {
-            // Replace this with your actual Home Screen Composable
             HomeScreen()
         }
     }

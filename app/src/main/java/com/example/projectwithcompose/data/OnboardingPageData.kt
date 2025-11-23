@@ -34,11 +34,6 @@ val onboardingPagesList = listOf(
         title = "Search diary",
         description = "Effortlessly search your diary to relive a particular memory!"
     ),
-    OnboardingPageData(
-        imageRes = R.drawable.ic_illus_onboarding_4,
-        title = "Most secure",
-        description = "Save memories with PIN, Face lock and intruder selfie"
-    )
 )
 
 // A helper for standard text styles (optional, but helps match design)

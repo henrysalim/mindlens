@@ -98,8 +98,6 @@ fun OnboardingScreen(onOnboardingFinished: () -> Unit) {
     }
 }
 
-// --- Helper Composables for Onboarding ---
-
 // 1. Layout for a single page content within the pager
 @Composable
 fun OnboardingSinglePageContent(pageData: OnboardingPageData) {
