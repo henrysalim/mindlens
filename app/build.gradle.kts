@@ -139,4 +139,17 @@ dependencies {
 
     // Icons
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
+
+    //Coil for images
+    implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc01")
+    //Youtube player
+    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
+
+    //MAPS
+    implementation("com.google.maps.android:maps-compose:4.3.0")
+
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
 }
+

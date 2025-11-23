@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.projectwithcompose.screens.main.MainScreen
 import com.example.projectwithcompose.screens.auth.RegisterOptionsScreen
 import com.example.projectwithcompose.screens.main.HomeScreen
 import com.example.projectwithcompose.screens.splash.OnboardingScreen
@@ -18,19 +19,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Apply the app theme
-            DailyDiaryTheme {
+            // Gunakan Theme baru kita (dynamicColor = false agar warna hijau konsisten)
+            DailyDiaryTheme(dynamicColor = false) {
                 AppNavigation()
             }
         }
     }
 }
 
-// Define route names
+// Definisi Route Sederhana untuk alur awal (Splash -> Onboarding -> Main App)
 object Routes {
     const val Splash = "splash"
     const val Onboarding = "onboarding"
     const val Home = "home"
+    const val MainApp = "main_app"
     const val RegisterOptions = "register-options"
     const val EmailRegister = "email-register"
 }
@@ -43,14 +45,19 @@ fun AppNavigation() {
 
     NavHost(navController = navController, startDestination = Routes.Splash) {
 
-        // 1. Splash Route
+        // 1. Splash Screen Route
         composable(Routes.Splash) {
             SplashScreen(
-                navController = navController,
+                onSplashFinished = {
+                    // Hapus Splash dari backstack agar tidak bisa kembali ke splash
+                    navController.navigate(Routes.Onboarding) {
+                        popUpTo(Routes.Splash) { inclusive = true }
+                    }
+                }
             )
         }
 
-        // 2. Onboarding Route
+        // 2. Onboarding Screen Route
         composable(Routes.Onboarding) {
             OnboardingScreen(
                 onOnboardingFinished = {
@@ -61,17 +68,18 @@ fun AppNavigation() {
                 }
             )
         }
-
-        // 3. handle auth
+        // 3. Register Options (Layar Auth Teman)
         composable(Routes.RegisterOptions) {
+            // Pastikan di dalam codingan teman (RegisterOptionsScreen), 
+            // kalau login sukses navigasinya ke arah "main_app" (Routes.MainApp)
             RegisterOptionsScreen(
-                navController = navController,
+                navController = navController
             )
         }
 
-        // 4. Actual App Home Screen Route
-        composable(Routes.Home) {
-            HomeScreen()
+        // 4. Main App (Dashboard Kamu dengan Navbar)
+        composable(Routes.MainApp) {
+            MainScreen()
         }
     }
 }
