@@ -34,7 +34,6 @@ object Routes {
     const val Onboarding = "onboarding"
     const val MainApp = "main_app"
     const val RegisterOptions = "register-options"
-    const val EmailRegister = "email-register"
 }
 
 @Composable
@@ -46,11 +45,7 @@ fun AppNavigation() {
         // 1. Splash Screen
         composable(Routes.Splash) {
             SplashScreen(
-                onSplashFinished = {
-                    navController.navigate(Routes.Onboarding) {
-                        popUpTo(Routes.Splash) { inclusive = true }
-                    }
-                }
+                navController = navController,
             )
         }
 
@@ -58,8 +53,7 @@ fun AppNavigation() {
         composable(Routes.Onboarding) {
             OnboardingScreen(
                 onOnboardingFinished = {
-                    // Arahkan ke RegisterOptions setelah onboarding
-                    navController.navigate(Routes.MainApp) {
+                    navController.navigate(Routes.RegisterOptions) {
                         popUpTo(Routes.Onboarding) { inclusive = true }
                     }
                 }
@@ -68,8 +62,6 @@ fun AppNavigation() {
 
         // 3. Register Options (Layar Auth)
         composable(Routes.RegisterOptions) {
-            // [PENTING] Pastikan RegisterOptionsScreen di file aslinya
-            // memang menerima parameter 'navController'.
             RegisterOptionsScreen(
                 navController = navController
             )
@@ -78,12 +70,6 @@ fun AppNavigation() {
         // 4. Main App (Dashboard dengan Navbar)
         composable(Routes.MainApp) {
             MainScreen()
-        }
-
-        // (Opsional) Jika ada rute EmailRegister
-        composable(Routes.EmailRegister) {
-            // Pastikan screen ini juga sudah dibuat atau diimport
-            // EmailRegisterScreen(navController = navController)
         }
 
         composable(Screen.Articles.route) {
