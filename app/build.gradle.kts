@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("org.jetbrains.kotlin.plugin.compose")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -141,8 +142,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
     //Coil for images
-    implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc01")
-    //Youtube player
+    implementation("io.coil-kt:coil-compose:2.6.0")    //Youtube player
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
 
     //MAPS
@@ -151,5 +151,11 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:18.2.0")
 
     implementation("org.osmdroid:osmdroid-android:6.1.18")
+
+    // Networking
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    implementation("com.google.code.gson:gson:2.10.1")
 }
 

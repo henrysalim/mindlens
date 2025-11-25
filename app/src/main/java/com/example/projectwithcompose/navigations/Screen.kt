@@ -11,6 +11,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object PsychologistMap : Screen("psychologist_map_screen", "Psikolog", Icons.Outlined.LocationOn)
     object DepressionDetection : Screen("depression_detection_screen", "Scan", Icons.Outlined.CameraAlt)
     object Articles : Screen("articles_screen", "Artikel", Icons.Outlined.Article)
+    object ArticleDetail : Screen("article_detail", "Detail", Icons.Outlined.Description)
     object Profile : Screen("profile_screen", "Profile", Icons.Outlined.Person)
 
     // --- SUB-SCREENS (DETAIL) ---
