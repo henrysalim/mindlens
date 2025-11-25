@@ -55,7 +55,7 @@ fun RegisterOptionsScreen(
     // As soon as the ViewModel says "Authenticated", this block runs and moves to Home
     LaunchedEffect(authState) {
         if (authState is AuthState.Authenticated) {
-            navController.navigate(Routes.Home) {
+            navController.navigate(Routes.MainApp) {
                 popUpTo(Routes.RegisterOptions) { inclusive = true }
             }
         }
