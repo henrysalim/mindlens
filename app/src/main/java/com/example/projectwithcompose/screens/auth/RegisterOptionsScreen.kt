@@ -27,7 +27,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.projectwithcompose.Routes
 import com.example.projectwithcompose.viewModel.AuthState
 import com.example.projectwithcompose.viewModel.AuthViewModel
-import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
 import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
 import io.github.jan.supabase.compose.auth.composeAuth
 
@@ -78,14 +77,6 @@ fun RegisterOptionsScreen(
                             fontSize = 18.sp
                         )
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.White
