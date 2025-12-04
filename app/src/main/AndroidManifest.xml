@@ -14,10 +14,10 @@
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
-            android:name=".DiaryApplication"
+            android:name="com.example.mindlens.DiaryApplication"
             android:theme="@style/Theme.ProjectWithCompose">
         <activity
-                android:name=".MainActivity"
+                android:name="com.example.mindlens.MainActivity"
                 android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

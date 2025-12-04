@@ -5,10 +5,11 @@ plugins {
     alias(libs.plugins.kotlin.android)
     id("org.jetbrains.kotlin.plugin.compose")
     id("kotlin-parcelize")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
-    namespace = "com.example.projectwithcompose"
+    namespace = "com.example.mindlens"
     compileSdk = 36
 
     val localProperties = Properties()
