@@ -1,14 +1,12 @@
 package com.example.mindlens.screens.main
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -24,7 +22,10 @@ import com.example.mindlens.ui.TextBlack
 import com.example.mindlens.screens.article.ArticleScreen
 import com.example.mindlens.screens.article.ArticleDetailScreen
 import com.example.mindlens.data.Article
+import com.example.mindlens.data.DiaryEntry
 import com.example.mindlens.screens.profile.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @Composable
 fun MainScreen() {
@@ -85,7 +86,13 @@ fun MainScreen() {
                 HomeScreen(
                     onNavigateToHistory = { navController.navigate(Screen.DiaryHistory.route) },
                     onNavigateToActivity = { type -> navController.navigate(Screen.ActivityDetail.createRoute(type)) },
-                    onNavigateToBreathing = { navController.navigate(Screen.BreathingExercise.route) }
+                    onNavigateToBreathing = { navController.navigate(Screen.BreathingExercise.route) },
+                    onNavigateToDetail = { entry ->
+                        val entryJson = Json.encodeToString(entry)
+
+                        val encodedJson = Uri.encode(entryJson)
+                        navController.navigate(Screen.DiaryHistory.createRoute(encodedJson))
+                    }
                 )
             }
 
@@ -162,8 +169,17 @@ fun MainScreen() {
                 ExerciseGuideScreen(exerciseId = id, onBack = { navController.popBackStack() })
             }
 
-            composable(Screen.DiaryHistory.route) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Full History Page") }
+            composable(Screen.DiaryHistory.route) { backStackEntry ->
+                // Retrieve and Deserialize the object
+                val entryJson = backStackEntry.arguments?.getString("entry")
+                val entry = entryJson?.let { Json.decodeFromString<DiaryEntry>(it) }
+
+                if (entry != null) {
+                    DiaryDetailScreen(
+                        entry = entry,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
             }
         }
     }

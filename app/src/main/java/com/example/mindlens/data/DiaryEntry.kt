@@ -9,5 +9,6 @@ data class DiaryEntry(
     val title: String,
     val content: String,
     val mood: String,
+    val color: Int,
     @SerialName("created_at") val createdAt: String? = null
 )

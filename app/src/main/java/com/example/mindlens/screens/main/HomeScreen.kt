@@ -37,9 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mindlens.ui.* // Pastikan package theme benar
-import com.example.mindlens.ui.components.CustomSuccessToast
 import com.example.mindlens.data.DiaryEntry
 import com.example.mindlens.helpers.formatDiaryDate
+import com.example.mindlens.ui.components.CustomToast
 import com.example.mindlens.viewModel.AuthViewModel
 
 // --- DATA MODELS ---
@@ -63,12 +63,14 @@ data class WeeklyData(
 )
 
 // --- MAIN COMPOSABLE ---
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun HomeScreen(
     // Parameter Callback Navigasi (PENTING)
     onNavigateToHistory: () -> Unit = {},
     onNavigateToActivity: (String) -> Unit = {},
     onNavigateToBreathing: () -> Unit = {},
+    onNavigateToDetail: (DiaryEntry) -> Unit = {},
     onNavigateToPanic: () -> Unit = {},
     // Inject ViewModel (Opsional jika belum siap, pakai default)
     viewModel: HomeViewModel = viewModel(),
@@ -82,6 +84,7 @@ fun HomeScreen(
     // State untuk Dialog Diary (UI State)
     var showDiaryDialog by remember { mutableStateOf(false) }
     var selectedMoodForEntry by remember { mutableStateOf("") }
+    var selectedColorForEntry by remember { mutableStateOf(Color.Gray) }
     var diaryInputText by remember { mutableStateOf("") }
     val userName = remember { authViewModel.getUserName() }
 
@@ -104,7 +107,8 @@ fun HomeScreen(
             MoodCheckInSection(
                 onMoodSelected = { mood, color ->
                     selectedMoodForEntry = mood
-                    showDiaryDialog = true // Buka Dialog
+                    showDiaryDialog = true
+                    selectedColorForEntry = color
                 }
             )
 
@@ -136,7 +140,7 @@ fun HomeScreen(
                     diaryList = diaryList,
                     onSeeAllClick = onNavigateToHistory, // Panggil callback History
                     onItemClick = { entry ->
-                        Toast.makeText(context, "Opening diary: ${entry.title}", Toast.LENGTH_SHORT).show()
+                        onNavigateToDetail(entry)
                     }
                 )
             }
@@ -190,13 +194,13 @@ fun HomeScreen(
                                         // 3. Reset inputs
                                         diaryInputText = ""
                                         selectedMoodForEntry = ""
-                                        Toast.makeText(context, "Diary saved!", Toast.LENGTH_SHORT).show()
                                     },
                                     onError = { errorMsg ->
                                         Log.d("error submit", errorMsg)
                                         Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
                                         // Do NOT close dialog here so user can try again
                                     },
+                                    colorInt = selectedColorForEntry.toArgb(),
                                 )
 
                                 // Reset UI
@@ -217,8 +221,9 @@ fun HomeScreen(
             )
         }
 
-        CustomSuccessToast(
+        CustomToast(
             visible = showSuccessToast,
+            message = "Data successfully stored!",
             onDismiss = { showSuccessToast = false }
         )
     }

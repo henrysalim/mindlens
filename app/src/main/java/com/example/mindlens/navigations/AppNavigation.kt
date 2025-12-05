@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.mindlens.Routes
+import com.example.mindlens.screens.auth.NativeLoginScreen
 import com.example.mindlens.screens.auth.RegisterOptionsScreen
 import com.example.mindlens.screens.main.MainScreen
 import com.example.mindlens.screens.splash.OnboardingScreen
@@ -37,6 +38,12 @@ fun AppNavigation() {
         // 3. Auth (NEW)
         composable(Routes.RegisterOptions) {
             RegisterOptionsScreen(
+                navController = navController,
+            )
+        }
+
+        composable(Routes.NativeLogin) {
+            NativeLoginScreen(
                 navController = navController,
             )
         }
