@@ -49,6 +49,7 @@ class HomeViewModel : ViewModel() {
     fun saveDiaryEntry(
         content: String,
         mood: String,
+        colorInt: Int,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -65,6 +66,7 @@ class HomeViewModel : ViewModel() {
                     title = autoTitle,
                     content = content,
                     mood = mood,
+                    color = colorInt,
                     createdAt = timestamp
                 )
 

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error // Icon for error
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -21,12 +22,12 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 @Composable
-fun CustomSuccessToast(
+fun CustomToast(
     visible: Boolean,
-    message: String = "Saved Successfully!",
+    message: String,
+    isError: Boolean = false, // New parameter to toggle style
     onDismiss: () -> Unit
 ) {
-    // Auto-hide after 2 seconds
     LaunchedEffect(visible) {
         if (visible) {
             delay(2000)
@@ -35,7 +36,7 @@ fun CustomSuccessToast(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().padding(top = 50.dp), // Position from top
+        modifier = Modifier.fillMaxSize().padding(top = 50.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         AnimatedVisibility(
@@ -45,11 +46,19 @@ fun CustomSuccessToast(
         ) {
             Row(
                 modifier = Modifier
-                    .background(Color(0xFF4CAF50), RoundedCornerShape(24.dp)) // Green bg
+                    .background(
+                        color = if (isError) Color(0xFFEF5350) else Color(0xFF4CAF50), // Red if error, Green if success
+                        shape = RoundedCornerShape(24.dp)
+                    )
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
+                // Change Icon based on type
+                Icon(
+                    imageVector = if (isError) Icons.Default.Error else Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color.White
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(text = message, color = Color.White, fontWeight = FontWeight.Bold)
             }

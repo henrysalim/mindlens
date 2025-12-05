@@ -15,7 +15,9 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Profile : Screen("profile_screen", "Profile", Icons.Outlined.Person)
 
     // --- SUB-SCREENS (DETAIL) ---
-    object DiaryHistory : Screen("diary_history", "History", Icons.Outlined.Book)
+    object DiaryHistory : Screen("detail/{entry}", "History", Icons.Outlined.Book) {
+        fun createRoute(entry: String?) = "detail/${entry}"
+    }
 
     // 1. List Aktivitas (Daftar Yoga/Meditasi)
     object ActivityDetail : Screen("activity_detail/{type}", "Activity", Icons.Outlined.FitnessCenter) {
@@ -40,9 +42,4 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object ChangePassword : Screen("change_password", "Change Password", Icons.Outlined.Lock)
     object AboutApp : Screen("about_app", "About", Icons.Outlined.Info)
     object TermsConditions : Screen("terms_conditions", "T&C", Icons.Outlined.Description)
-
-    // Auth & Splash
-    object Splash : Screen("splash_screen", "Splash", Icons.Outlined.Info)
-    object Onboarding : Screen("onboarding_screen", "Onboarding", Icons.Outlined.Info)
-    object Login : Screen("login_screen", "Login", Icons.Outlined.Login)
 }

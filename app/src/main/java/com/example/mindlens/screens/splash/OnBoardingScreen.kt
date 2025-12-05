@@ -10,7 +10,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -21,78 +26,99 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.mindlens.data.onboardingPagesList
 import kotlinx.coroutines.launch
 import com.example.mindlens.data.OnboardingBodyText
 import com.example.mindlens.data.OnboardingPageData
 import com.example.mindlens.data.OnboardingTitleText
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(onOnboardingFinished: () -> Unit) {
     val pagerState = rememberPagerState(pageCount = { onboardingPagesList.size })
     val coroutineScope = rememberCoroutineScope()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(bottom = 32.dp) // Padding for bottom area
-    ) {
-        // Top Logo Header
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp), contentAlignment = Alignment.Center
-        ) {
-            Text(text = "MindLens", fontWeight = FontWeight.Bold)
-        }
-
-        // The Pager (swiping area) takes up most of the space (weight 1f)
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f)
-        ) { pageIndex ->
-            // This calls the single page layout defined below
-            OnboardingSinglePageContent(pageData = onboardingPagesList[pageIndex])
-        }
-
-        // Bottom Section: Indicators and Button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Custom Indicators
-            PageIndicator(
-                pageCount = onboardingPagesList.size,
-                currentPage = pagerState.currentPage
-            )
-
-            // Next Button
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        if (pagerState.currentPage < onboardingPagesList.size - 1) {
-                            // Scroll to next page
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                        } else {
-                            // On last page, finish onboarding
-                            onOnboardingFinished()
-                        }
-                    }
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "MindLens",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp
+                        )
+                    )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.height(50.dp)
-            ) {
-                Text(
-                    // Change text on last page if desired, design shows "Next" for all
-                    text = if (pagerState.currentPage == onboardingPagesList.size - 1) "Next" else "Next",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White
                 )
+            )
+        },
+        containerColor = Color.White
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 32.dp) // Padding for bottom area
+            ) {
+                // The Pager (swiping area) takes up most of the space (weight 1f)
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f)
+                ) { pageIndex ->
+                    // This calls the single page layout defined below
+                    OnboardingSinglePageContent(pageData = onboardingPagesList[pageIndex])
+                }
+
+                // Bottom Section: Indicators and Button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Custom Indicators
+                    PageIndicator(
+                        pageCount = onboardingPagesList.size,
+                        currentPage = pagerState.currentPage
+                    )
+
+                    // Next Button
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                if (pagerState.currentPage < onboardingPagesList.size - 1) {
+                                    // Scroll to next page
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                } else {
+                                    // On last page, finish onboarding
+                                    onOnboardingFinished()
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(50.dp)
+                    ) {
+                        Text(
+                            // Change text on last page if desired, design shows "Next" for all
+                            text = if (pagerState.currentPage == onboardingPagesList.size - 1) "Next" else "Next",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }

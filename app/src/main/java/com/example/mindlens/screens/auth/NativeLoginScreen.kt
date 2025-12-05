@@ -1,10 +1,34 @@
 package com.example.mindlens.screens.auth
 
-import android.widget.Toast
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,32 +37,32 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import com.example.mindlens.R
-import com.example.mindlens.supabase.DatabaseConnection
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.mindlens.Routes
+import com.example.mindlens.supabase.DatabaseConnection
 import com.example.mindlens.ui.components.CustomLabeledTextField
 import com.example.mindlens.ui.components.CustomToast
-import com.example.mindlens.ui.components.SocialButton
 import com.example.mindlens.viewModel.AuthState
 import com.example.mindlens.viewModel.AuthViewModel
 import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
 import io.github.jan.supabase.compose.auth.composeAuth
 import kotlinx.coroutines.launch
 
-val TextGray = Color(0xFF888888)
-val BorderGray = Color(0xFFEEEEEE)
-val InputBg = Color(0xFFFAFAFA) // Very light gray for inputs if needed, or White
+fun onLoginClick(username: String, password: String) {
+
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegisterOptionsScreen(
+fun NativeLoginScreen(
     navController: NavController,
     viewModel: AuthViewModel = viewModel()
 ) {
+    // State for inputs
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
     val authState by viewModel.authState.collectAsState()
     val scope = rememberCoroutineScope()
 
@@ -48,13 +72,6 @@ fun RegisterOptionsScreen(
     var isToastError by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // --- Input States ---
-    var email by remember { mutableStateOf("") }
-    var fullName by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-
-    // 2. REACTIVE NAVIGATION
     // As soon as the ViewModel says "Authenticated", this block runs and moves to Home
     LaunchedEffect(authState) {
         if (authState is AuthState.Authenticated) {
@@ -64,18 +81,12 @@ fun RegisterOptionsScreen(
         }
     }
 
-    val loginAction = DatabaseConnection.supabase.composeAuth.rememberSignInWithGoogle(
-        onResult = { result ->
-            viewModel.handleGoogleResult(result)
-        }
-    )
-
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Register",
+                        text = "Login",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 18.sp
@@ -121,18 +132,6 @@ fun RegisterOptionsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Full Name
-            CustomLabeledTextField(
-                label = "Full Name",
-                value = fullName,
-                onValueChange = { fullName = it },
-                placeholder = "John Doe",
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Next
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // 3. Form Fields
             // Email
             CustomLabeledTextField(
@@ -157,93 +156,59 @@ fun RegisterOptionsScreen(
                 isPassword = true
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Confirm Password
-            CustomLabeledTextField(
-                label = "Confirm Password",
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                placeholder = "Must same with your password",
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
-                isPassword = true
-            )
-
             Spacer(modifier = Modifier.height(32.dp))
-
-            // 4. Google Button (Replaces "Already have account")
-            SocialButton(
-                text = "Continue with Google",
-                iconRes = R.drawable.ic_google,
-                onClick = { loginAction.startFlow() }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // 5. Continue Button (Primary)
             Button(
                 onClick = {
-                    isLoading = true
-                    // 1. Basic Validation
-                    if (password != confirmPassword) {
-                        toastMessage = "Passwords do not match!"
-                        isToastError = true
-                        showToast = true
-                    } else if (email.isBlank() || password.isBlank() || fullName.isBlank()) {
+                    if (email.isBlank() || password.isBlank()) {
                         toastMessage = "Please fill all fields"
                         isToastError = true
                         showToast = true
-                    } else if (password.length < 8 || confirmPassword.length < 8) {
-                        toastMessage = "Password length must be at least 8 characters"
-                        isToastError = true
-                        showToast = true
                     } else {
-                        // 2. Call ViewModel
-                        viewModel.signUp(
+                        viewModel.signIn(
                             email = email,
                             pass = password,
-                            fullName = fullName,
                             onSuccess = {
                                 // SUCCESS: Redirect to Native Login Screen
-                                toastMessage = "Registration Successful! Redirecting..."
+                                toastMessage = "Login Successful! Redirecting..."
                                 isToastError = false
                                 showToast = true
 
                                 scope.launch {
                                     kotlinx.coroutines.delay(2000) // Wait 2s
-                                    navController.navigate(Routes.NativeLogin) {
+                                    navController.navigate(Routes.MainApp) {
                                         // Optional: Prevent going back to register
-                                        popUpTo(Routes.RegisterOptions) { inclusive = true }
+                                        popUpTo(Routes.NativeLogin) { inclusive = true }
                                     }
                                 }
                             },
-                            onError = { errorMessage ->
-                                // ERROR: Show Custom Red Toast
-                                toastMessage = errorMessage
+                            onError = { error ->
+                                // FAILURE: Show Red Toast
+                                toastMessage = error
                                 isToastError = true
                                 showToast = true
                             }
                         )
                     }
-                    isLoading = false
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
+                enabled = if(isLoading) false else true,
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Black,
                     contentColor = Color.White
-                ),
-                enabled = if(isLoading) false else true,
+                )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Sign Up")
+                    Text("Log In")
                 }
             }
+
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -253,7 +218,7 @@ fun RegisterOptionsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Already have an account? ",
+                    text = "Don't have an account? ",
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
@@ -261,23 +226,21 @@ fun RegisterOptionsScreen(
                 TextButton(
                     onClick = {
                         // Navigate to the Login Screen
-                        navController.navigate(Routes.NativeLogin) {
-                            popUpTo(Routes.RegisterOptions) { inclusive = true }
+                        navController.navigate(Routes.RegisterOptions) {
+                            popUpTo(Routes.NativeLogin) { inclusive = true }
                         }
                     },
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
-                        text = "Login",
+                        text = "Register here",
                         fontWeight = FontWeight.Bold,
                         color = Color.Black,
                         fontSize = 14.sp
                     )
                 }
             }
-
-            // --- CUSTOM TOAST OVERLAY ---
-            // This sits on top of the screen (z-index)
+                // This sits on top of the screen (z-index)
             CustomToast(
                 visible = showToast,
                 message = toastMessage,
