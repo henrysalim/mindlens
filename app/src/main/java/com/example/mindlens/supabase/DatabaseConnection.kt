@@ -2,7 +2,6 @@ package com.example.mindlens.supabase
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.example.mindlens.BuildConfig
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.SessionManager
@@ -14,6 +13,7 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.serializer.KotlinXSerializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.example.mindlens.BuildConfig
 
 object DatabaseConnection {
     lateinit var supabase: SupabaseClient

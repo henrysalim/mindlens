@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ProjectWithCompose"
+rootProject.name = "MindLens"
 include(":app")
  
