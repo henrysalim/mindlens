@@ -1,5 +1,9 @@
 package com.example.mindlens.screens.main
 
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -19,15 +23,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.mindlens.BuildConfig
 import com.example.mindlens.ui.*
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 // --- 1. DATA MODEL PSIKOLOG ---
 data class Psychologist(
@@ -54,40 +67,144 @@ val psychologists = listOf(
 
 @Composable
 fun PsychologistMapScreen() {
-    // State Kamera Map (Start di Jakarta)
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(jakartaCenter, 14f)
+    var nearbyPsychologists by remember { mutableStateOf<List<Psychologist>>(emptyList()) }
+// --- 3. MINTA PERMISSION
+    val context = LocalContext.current
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+
+    var userLocation by remember { mutableStateOf<LatLng?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            try {
+                fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                    loc?.let { userLocation = LatLng(it.latitude, it.longitude) }
+                }
+            } catch (e: SecurityException) {
+                Log.e("Location", "Permission denied", e)
+            }
+        }
     }
+// Minta permission otomatis ketika screen dibuka
+    LaunchedEffect(Unit) {
+        permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+
+    // PLACES API
+    val placesClient = remember {
+        com.google.android.libraries.places.api.Places.initialize(context, "AIzaSyB-s0xs3DWHJRTADbo8xFn4Ao4rtS89jdE")
+        com.google.android.libraries.places.api.Places.createClient(context)
+    }
+
+    val cameraPositionState = rememberCameraPositionState()
+
+// Animate camera ke user location begitu tersedia
+    LaunchedEffect(userLocation) {
+        userLocation?.let {
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(it, 15f),
+                durationMs = 1000
+            )
+        }
+    }
+
+    LaunchedEffect(userLocation) {
+        userLocation?.let { location ->
+            val url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
+                    "?location=${location.latitude},${location.longitude}" +
+                    "&radius=3000" +
+                    "&keyword=psychologist" +
+                    "&key=${BuildConfig.MAPS_API_KEY}"
+
+            val client = OkHttpClient()
+            val request = Request.Builder().url(url).build()
+
+            withContext(Dispatchers.IO) {
+                val response = client.newCall(request).execute()
+                val body = response.body?.string()
+                if (body != null) {
+                    val json = JSONObject(body)
+                    val results = json.getJSONArray("results")
+                    val tempList = mutableListOf<Psychologist>()
+
+                    for (i in 0 until results.length()) {
+                        val place = results.getJSONObject(i)
+                        val loc = place.getJSONObject("geometry").getJSONObject("location")
+                        val lat = loc.getDouble("lat")
+                        val lng = loc.getDouble("lng")
+
+                        tempList.add(
+                            Psychologist(
+                                id = place.getString("place_id"),
+                                name = place.getString("name"),
+                                specialty = "Psychologist",
+                                location = LatLng(lat, lng),
+                                rating = place.optDouble("rating", 0.0),
+                                distance = "", // nanti bisa dihitung
+                                isOpen = place.optJSONObject("opening_hours")?.optBoolean("open_now") ?: false,
+                                imageUrl = place.optJSONArray("photos")?.optJSONObject(0)?.optString("photo_reference") ?: "",
+                                address = place.optString("vicinity")
+                            )
+                        )
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        nearbyPsychologists = tempList
+                    }
+                }
+            }
+        }
+    }
+
 
     // State untuk Psikolog yang dipilih (diklik markernya)
     var selectedPsychologist by remember { mutableStateOf<Psychologist?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // --- 3. GOOGLE MAPS ---
-        GoogleMap(
-            modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
-            uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false) // UI Bersih
-        ) {
-            // Render Marker untuk setiap Psikolog
-            psychologists.forEach { psy ->
-                Marker(
-                    state = MarkerState(position = psy.location),
-                    title = psy.name,
-                    snippet = psy.specialty,
-                    onClick = {
-                        selectedPsychologist = psy // Simpan data yang diklik
-                        false // Return false agar default behavior (center camera) tetap jalan
-                    },
-                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(
-                        if (selectedPsychologist == psy) 120f else 200f // Ganti warna marker jika dipilih (Hue)
+        val hasLocationPermission =
+            context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+
+// --- 4. GOOGLE MAPS
+        if (hasLocationPermission) {
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                uiSettings = MapUiSettings(
+                    zoomControlsEnabled = false,
+                    myLocationButtonEnabled = false
+                ), // UI Bersih
+            ) {
+                // Render Marker untuk setiap Psikolog
+                nearbyPsychologists.forEach { psy ->
+                    Marker(
+                        state = MarkerState(position = psy.location),
+                        title = psy.name,
+                        snippet = psy.specialty,
+                        onClick = {
+                            selectedPsychologist = psy // Simpan data yang diklik
+                            false // Return false agar default behavior (center camera) tetap jalan
+                        },
+                        icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(
+                            if (selectedPsychologist == psy) 120f else 200f // Ganti warna marker jika dipilih (Hue)
+                        )
                     )
-                )
+                }
+
+                userLocation?.let { location ->
+                    Marker(
+                        state = MarkerState(position = location),
+                        title = "Your Location",
+                        icon = BitmapDescriptorFactory.defaultMarker(180f)
+                    )
+                }
             }
         }
 
-        // --- 4. FLOATING SEARCH BAR (ATAS) ---
+        // --- 5. FLOATING SEARCH BAR (ATAS) ---
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -120,7 +237,7 @@ fun PsychologistMapScreen() {
             }
         }
 
-        // --- 5. FLOATING INFO CARD (BAWAH) ---
+        // --- 6. FLOATING INFO CARD (BAWAH) ---
         // Animasi: Muncul dari bawah saat marker diklik
         AnimatedVisibility(
             visible = selectedPsychologist != null,
@@ -144,21 +261,25 @@ fun PsychologistMapScreen() {
         }
 
         // Tombol "My Location" (Floating)
-        if (selectedPsychologist == null) {
-            FloatingActionButton(
-                onClick = { cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(jakartaCenter, 14f)) },
-                containerColor = Color.White,
-                contentColor = TechPrimary,
-                shape = CircleShape,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = 110.dp, end = 16.dp)
-            ) {
-                Icon(Icons.Default.MyLocation, contentDescription = "My Location")
-            }
+        FloatingActionButton(
+            onClick = {
+                userLocation?.let { location ->
+                    cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(location, 15f))
+                } ?: run {
+                    Toast.makeText(context, "Location not ready", Toast.LENGTH_SHORT).show()
+                }
+            },
+            containerColor = Color.White,
+            contentColor = TechPrimary,
+            shape = CircleShape,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 110.dp, end = 16.dp)
+        ) {
+            Icon(Icons.Default.MyLocation, contentDescription = "My Location")
+        }
         }
     }
-}
 
 // --- KOMPONEN UI ---
 
