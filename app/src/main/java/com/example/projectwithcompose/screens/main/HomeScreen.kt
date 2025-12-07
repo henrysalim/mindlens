@@ -205,7 +205,7 @@ fun HomeHeader(onPanicClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Hello, Livia 👋", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("Hello, John 👋", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Text("MindLens is ready.", color = Color.White.copy(0.8f), style = MaterialTheme.typography.bodyMedium)
                 }
                 // TOMBOL SOS / DARURAT
