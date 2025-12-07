@@ -68,7 +68,7 @@ fun MainScreen() {
                             navController.navigate(screen.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
-                                restoreState = true
+                                restoreState = (screen.route != Screen.Home.route)
                             }
                         }
                     )
@@ -86,7 +86,8 @@ fun MainScreen() {
                 HomeScreen(
                     onNavigateToHistory = { navController.navigate(Screen.DiaryHistory.route) },
                     onNavigateToActivity = { type -> navController.navigate(Screen.ActivityDetail.createRoute(type)) },
-                    onNavigateToBreathing = { navController.navigate(Screen.BreathingExercise.route) },
+                    onNavigateToBreathing = { navController.navigate(Screen .BreathingExercise.route) },
+                    onNavigateToScan = {navController.navigate(Screen.DepressionDetection.route)}   ,
                     onNavigateToDetail = { entry ->
                         val entryJson = Json.encodeToString(entry)
 

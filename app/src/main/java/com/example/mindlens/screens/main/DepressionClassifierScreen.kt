@@ -60,7 +60,35 @@ fun DepressionClassifierScreen() {
     var analysisResult by remember { mutableStateOf<ScanHistoryItem?>(null) }
 
     // State History (Simpan sementara di memory)
-    val scanHistory = remember { mutableStateListOf<ScanHistoryItem>() }
+    // KODE BARU (Dengan Data Placeholder)
+    val scanHistory = remember {
+        mutableStateListOf(
+            ScanHistoryItem(
+                imageUri = null, // Tidak perlu gambar untuk history lama
+                result = "Normal / Sehat",
+                confidence = 92f,
+                date = "Hari ini, 08:30"
+            ),
+            ScanHistoryItem(
+                imageUri = null,
+                result = "Indikasi Depresi",
+                confidence = 74f,
+                date = "Kemarin, 20:15"
+            ),
+            ScanHistoryItem(
+                imageUri = null,
+                result = "Normal / Sehat",
+                confidence = 88f,
+                date = "5 Des, 14:00"
+            ),
+            ScanHistoryItem(
+                imageUri = null,
+                result = "Indikasi Depresi",
+                confidence = 81f,
+                date = "1 Des, 09:10"
+            )
+        )
+    }
 
     // Launchers
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
