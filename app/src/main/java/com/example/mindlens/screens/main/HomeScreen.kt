@@ -62,6 +62,18 @@ data class WeeklyData(
     val color: Color
 )
 
+data class HomeScanItem(
+    val result: String,
+    val date: String,
+    val confidence: Int,
+    val isRisk: Boolean
+)
+
+val dummyHomeScans = listOf(
+    HomeScanItem("Normal / Sehat", "Hari ini, 08:30", 92, false),
+    HomeScanItem("Indikasi Stress", "Kemarin, 20:15", 74, true)
+)
+
 // --- MAIN COMPOSABLE ---
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -72,6 +84,7 @@ fun HomeScreen(
     onNavigateToBreathing: () -> Unit = {},
     onNavigateToDetail: (DiaryEntry) -> Unit = {},
     onNavigateToPanic: () -> Unit = {},
+    onNavigateToScan: () -> Unit = {},
     // Inject ViewModel (Opsional jika belum siap, pakai default)
     viewModel: HomeViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel()
@@ -115,7 +128,16 @@ fun HomeScreen(
             // 3. Weekly Chart Section
             WeeklyChartSection()
 
-            // 4. Daily Activities Section (Yoga, Breathing, Meditation)
+
+            // 4. Recent Scans Section
+            RecentScansHomeSection(
+                scans = dummyHomeScans,
+                onScanClick = onNavigateToScan
+            )
+
+
+            Spacer(modifier = Modifier.height(24.dp))
+            // 5. Daily Activities Section (Yoga, Breathing, Meditation)
             DailyPhysioSection(
                 onItemClick = { type ->
                     if (type == "Breathing") {
@@ -565,6 +587,87 @@ fun DiaryItem(entry: DiaryEntry, onClick: () -> Unit) {
                 )
             }
             Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TechTextSecondary)
+        }
+    }
+}
+
+@Composable
+fun RecentScansHomeSection(
+    scans: List<HomeScanItem>,
+    onScanClick: () -> Unit = {}
+) {
+    Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Recent Health Scans",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = TechTextPrimary
+            )
+            // Tombol See All
+            Text(
+                "Scan Now",
+                color = TechPrimary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                modifier = Modifier.clickable { onScanClick() }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        scans.forEach { item ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(1.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+                    .clickable { onScanClick() }
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Ikon Status
+                    Icon(
+                        imageVector = if (item.isRisk) Icons.Default.Warning else Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = if (item.isRisk) Color(0xFFEF5350) else Color(0xFF66BB6A),
+                        modifier = Modifier.size(24.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // Teks Info
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.result,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = TechTextPrimary
+                        )
+                        Text(
+                            text = item.date,
+                            fontSize = 12.sp,
+                            color = TechTextSecondary
+                        )
+                    }
+
+                    // Persentase
+                    Text(
+                        text = "${item.confidence}%",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = TechPrimary
+                    )
+                }
+            }
         }
     }
 }
