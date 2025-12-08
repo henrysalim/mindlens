@@ -17,25 +17,26 @@ fun AppNavigation() {
 
     NavHost(navController = navController, startDestination = Routes.Splash) {
 
-        // 1. Splash
+        // 1. Splash Screen
         composable(Routes.Splash) {
             SplashScreen(
-                navController
+                navController = navController
             )
         }
 
-        // 2. Onboarding
+        // 2. Onboarding Screen
         composable(Routes.Onboarding) {
             OnboardingScreen(
                 onOnboardingFinished = {
-                    navController.navigate(Routes.MainApp) {
+                    // Setelah Onboarding, user harus Login/Register dulu (bukan langsung MainApp)
+                    navController.navigate(Routes.RegisterOptions) {
                         popUpTo(Routes.Onboarding) { inclusive = true }
                     }
                 }
             )
         }
 
-        // 3. Auth (NEW)
+        // 3. Auth Screens
         composable(Routes.RegisterOptions) {
             RegisterOptionsScreen(
                 navController = navController,
@@ -48,9 +49,19 @@ fun AppNavigation() {
             )
         }
 
-        // 4. Home
+        // 4. Main App (Dashboard)
         composable(Routes.MainApp) {
-            MainScreen() // Your main app content
+            // PERBAIKAN DI SINI:
+            // Kita wajib mengisi parameter onLogout
+            MainScreen(
+                onLogout = {
+                    // Logika saat user klik Logout di Profile:
+                    // Kembali ke halaman RegisterOptions dan hapus history navigasi
+                    navController.navigate(Routes.RegisterOptions) {
+                        popUpTo(Routes.MainApp) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

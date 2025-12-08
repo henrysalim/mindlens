@@ -74,7 +74,8 @@ class AuthViewModel : ViewModel() {
                     this.email = email
                     this.password = pass
                     data = buildJsonObject {
-                        put("Display name", fullName)
+                        // GANTI "Display name" MENJADI "full_name" (Standar Supabase)
+                        put("full_name", fullName)
                     }
                 }
 
@@ -164,10 +165,11 @@ class AuthViewModel : ViewModel() {
     fun getUserName(): String {
         val user = DatabaseConnection.supabase.auth.currentUserOrNull()
 
-        // Google stores the name inside the "full_name" or "name" key in metadata
+        // Cek berbagai kemungkinan key
         val fullName = user?.userMetadata?.get("full_name")?.jsonPrimitive?.content
             ?: user?.userMetadata?.get("name")?.jsonPrimitive?.content
-            ?: "User" // Fallback if no name found
+            ?: user?.userMetadata?.get("Display name")?.jsonPrimitive?.content // Jaga-jaga kalau ada data lama
+            ?: "User"
 
         return fullName
     }

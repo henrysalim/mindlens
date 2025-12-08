@@ -5,10 +5,28 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class DiaryEntry(
-    val id: String? = null,
+    // Mencocokkan kolom "id" di Supabase
+    @SerialName("id")
+    val id: String,
+
+    // WAJIB: Mencocokkan kolom "user_id" yang Not Null di Supabase
+    @SerialName("user_id")
+    val userId: String,
+
+    @SerialName("title")
     val title: String,
+
+    @SerialName("content")
     val content: String,
+
+    @SerialName("mood")
     val mood: String,
-    val color: Int,
-    @SerialName("created_at") val createdAt: String? = null
+
+    // Supabase int8 = Kotlin Long (menggunakan Int bisa, tapi Long lebih aman untuk int8)
+    @SerialName("color")
+    val color: Long,
+
+    // Mencocokkan kolom "created_at"
+    @SerialName("created_at")
+    val createdAt: String
 )
