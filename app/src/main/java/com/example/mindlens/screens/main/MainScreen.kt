@@ -1,6 +1,7 @@
 package com.example.mindlens.screens.main
 
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -12,66 +13,74 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.*
-import com.example.mindlens.Routes
+import androidx.navigation.navArgument
 import com.example.mindlens.navigations.Screen
 import com.example.mindlens.ui.PrimaryGreen
 import com.example.mindlens.ui.TextBlack
 
+// --- IMPORT DATA ---
+import com.example.mindlens.data.Article
+import com.example.mindlens.data.DiaryEntry
+
 // --- IMPORT SCREENS ---
 import com.example.mindlens.screens.article.ArticleScreen
 import com.example.mindlens.screens.article.ArticleDetailScreen
-import com.example.mindlens.data.Article
-import com.example.mindlens.data.DiaryEntry
 import com.example.mindlens.screens.profile.*
+import com.example.mindlens.screens.main.DepressionClassifierScreen
+import com.example.mindlens.screens.main.ActivityDetailScreen
+import com.example.mindlens.screens.main.BreathingScreen
+// Pastikan VideoPlayerScreen diimport jika ada file terpisah, atau pastikan Screen.VideoPlayer ada di Screen.kt
+import com.example.mindlens.screens.main.VideoPlayerScreen
+
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    onLogout: () -> Unit
+) {
     val navController = rememberNavController()
 
-    // Update Icon Scan jadi DocumentScanner (biar iconnya Analyzed)
     val items = listOf(
         Screen.Home to Icons.Outlined.Home,
         Screen.PsychologistMap to Icons.Outlined.LocationOn,
-        Screen.DepressionDetection to Icons.Outlined.DocumentScanner, // Masuk ke Navbar
+        Screen.DepressionDetection to Icons.Outlined.DocumentScanner,
         Screen.Articles to Icons.Outlined.Article,
         Screen.Profile to Icons.Outlined.Person
     )
 
     Scaffold(
-        // 1. FAB DIHAPUS total agar tidak ada tombol melayang
-
-        // 2. Bottom Navigation Bar Normal (5 Item Sejajar)
         bottomBar = {
-            NavigationBar(
-                containerColor = Color.White,
-                tonalElevation = 8.dp
-            ) {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentDestination = navBackStackEntry?.destination
+            val showBottomBar = items.any { it.first.route == currentDestination?.route }
 
-                // Loop biasa tanpa skip index
-                items.forEach { (screen, icon) ->
-                    NavigationBarItem(
-                        icon = { Icon(icon, contentDescription = null) },
-                        label = null, // Label tetap hidden biar minimalis
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = TextBlack,
-                            unselectedIconColor = Color.Gray,
-                            // Highlight Hijau saat dipilih
-                            indicatorColor = PrimaryGreen
-                        ),
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = (screen.route != Screen.Home.route)
+            if (showBottomBar) {
+                NavigationBar(
+                    containerColor = Color.White,
+                    tonalElevation = 8.dp
+                ) {
+                    items.forEach { (screen, icon) ->
+                        NavigationBarItem(
+                            icon = { Icon(icon, contentDescription = null) },
+                            label = null,
+                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = TextBlack,
+                                unselectedIconColor = Color.Gray,
+                                indicatorColor = PrimaryGreen
+                            ),
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -86,22 +95,39 @@ fun MainScreen() {
                 HomeScreen(
                     onNavigateToHistory = { navController.navigate(Screen.DiaryHistory.route) },
                     onNavigateToActivity = { type -> navController.navigate(Screen.ActivityDetail.createRoute(type)) },
-                    onNavigateToBreathing = { navController.navigate(Screen .BreathingExercise.route) },
-                    onNavigateToScan = {navController.navigate(Screen.DepressionDetection.route)}   ,
+                    onNavigateToBreathing = { navController.navigate(Screen.BreathingExercise.route) },
+
+                    // --- UPDATE BAGIAN INI (Navigasi Pindah Tab) ---
+                    onNavigateToScan = {
+                        navController.navigate(Screen.DepressionDetection.route) {
+                            // Logic ini menyamakan perilaku dengan klik Bottom Bar
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    // -----------------------------------------------
+
                     onNavigateToDetail = { entry ->
                         val entryJson = Json.encodeToString(entry)
-
                         val encodedJson = Uri.encode(entryJson)
-                        navController.navigate(Screen.DiaryHistory.createRoute(encodedJson))
+                        navController.navigate(Screen.DiaryDetail.createRoute(encodedJson))
                     }
                 )
             }
 
-            // --- 2. MAIN FEATURES ---
-            composable(Screen.PsychologistMap.route) { PsychologistMapScreen() }
-            composable(Screen.DepressionDetection.route) { DepressionClassifierScreen() }
+            // --- 2. FITUR LAIN ---
+            composable(Screen.PsychologistMap.route) {
+                PsychologistMapScreen()
+            }
 
-            // --- 3. ARTIKEL (LIST & DETAIL) ---
+            composable(Screen.DepressionDetection.route) {
+                DepressionClassifierScreen() // Tidak perlu onBack lagi
+            }
+
+            // --- 3. ARTIKEL ---
             composable(Screen.Articles.route) {
                 ArticleScreen(
                     onArticleClick = { article ->
@@ -110,7 +136,6 @@ fun MainScreen() {
                     }
                 )
             }
-
             composable(Screen.ArticleDetail.route) {
                 val article = navController.previousBackStackEntry?.savedStateHandle?.get<Article>("article_data")
                 if (article != null) {
@@ -121,66 +146,80 @@ fun MainScreen() {
                 }
             }
 
-            // --- 4. PROFILE & SETTINGS ---
+            // --- 4. PROFILE ---
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     onNavigateToEdit = { navController.navigate(Screen.EditProfile.route) },
                     onNavigateToPassword = { navController.navigate(Screen.ChangePassword.route) },
                     onNavigateToAbout = { navController.navigate(Screen.AboutApp.route) },
                     onNavigateToTnc = { navController.navigate(Screen.TermsConditions.route) },
-                    onLogout = {
-                        navController.navigate(Routes.RegisterOptions) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    }
+                    onLogout = onLogout
                 )
             }
-
-            // Sub-halaman Profile
             composable(Screen.EditProfile.route) { EditProfileScreen(onBack = { navController.popBackStack() }) }
             composable(Screen.ChangePassword.route) { ChangePasswordScreen(onBack = { navController.popBackStack() }) }
             composable(Screen.AboutApp.route) { AboutAppScreen(onBack = { navController.popBackStack() }) }
             composable(Screen.TermsConditions.route) { TermsConditionsScreen(onBack = { navController.popBackStack() }) }
 
-            // --- 5. ACTIVITY & VIDEO FEATURES ---
-            composable(Screen.ActivityDetail.route) { backStackEntry ->
-                val type = backStackEntry.arguments?.getString("type") ?: "Activity"
-                ActivityDetailScreen(
-                    activityType = type,
-                    onBack = { navController.popBackStack() },
-                    onVideoClick = { videoId, title, desc ->
-                        navController.navigate(Screen.VideoPlayer.createRoute(videoId, title, desc))
+            // --- 5. HISTORY & DETAIL (DIARY) ---
+            composable(Screen.DiaryHistory.route) {
+                MoodScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onItemClick = { entry: DiaryEntry ->
+                        val entryJson = Json.encodeToString(entry)
+                        val encodedJson = Uri.encode(entryJson)
+                        navController.navigate(Screen.DiaryDetail.createRoute(encodedJson))
                     }
                 )
             }
 
-            composable(Screen.VideoPlayer.route) { backStackEntry ->
-                val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
-                val title = backStackEntry.arguments?.getString("title") ?: ""
-                val desc = backStackEntry.arguments?.getString("desc") ?: ""
-                VideoPlayerScreen(videoId, title, desc, onBack = { navController.popBackStack() })
-            }
-
-            composable(Screen.BreathingExercise.route) {
-                BreathingScreen(onBack = { navController.popBackStack() })
-            }
-
-            composable(Screen.ExerciseGuide.route) { backStackEntry ->
-                val id = backStackEntry.arguments?.getString("exerciseId") ?: return@composable
-                ExerciseGuideScreen(exerciseId = id, onBack = { navController.popBackStack() })
-            }
-
-            composable(Screen.DiaryHistory.route) { backStackEntry ->
-                // Retrieve and Deserialize the object
+            composable(
+                route = Screen.DiaryDetail.route,
+                arguments = listOf(navArgument("entry") { type = NavType.StringType })
+            ) { backStackEntry ->
                 val entryJson = backStackEntry.arguments?.getString("entry")
                 val entry = entryJson?.let { Json.decodeFromString<DiaryEntry>(it) }
-
                 if (entry != null) {
                     DiaryDetailScreen(
                         entry = entry,
                         onBackClick = { navController.popBackStack() }
                     )
                 }
+            }
+
+            // --- 6. ACTIVITY, VIDEO & BREATHING ---
+
+            // Perbaikan di sini: Menambahkan parameter onVideoClick
+            composable(Screen.ActivityDetail.route) { backStackEntry ->
+                val type = backStackEntry.arguments?.getString("type") ?: "Activity"
+                ActivityDetailScreen(
+                    activityType = type,
+                    onBack = { navController.popBackStack() },
+                    onVideoClick = { videoId, title, desc ->
+                        // Navigasi ke VideoPlayerScreen
+                        navController.navigate(Screen.VideoPlayer.createRoute(videoId, title, desc))
+                    }
+                )
+            }
+
+            // Route untuk Video Player
+            composable(Screen.VideoPlayer.route) { backStackEntry ->
+                val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
+                val title = backStackEntry.arguments?.getString("title") ?: ""
+                val desc = backStackEntry.arguments?.getString("desc") ?: ""
+
+                VideoPlayerScreen(
+                    videoId = videoId,
+                    title = title,
+                    description = desc,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.BreathingExercise.route) {
+                BreathingScreen(
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }

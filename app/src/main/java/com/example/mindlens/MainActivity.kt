@@ -6,24 +6,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import com.example.mindlens.data.Article
-import com.example.mindlens.data.DiaryEntry
-import com.example.mindlens.navigations.Screen
-import com.example.mindlens.screens.article.ArticleDetailScreen
-import com.example.mindlens.screens.article.ArticleScreen
 import com.example.mindlens.screens.auth.NativeLoginScreen
 import com.example.mindlens.screens.auth.RegisterOptionsScreen
-import com.example.mindlens.screens.main.DiaryDetailScreen
 import com.example.mindlens.screens.main.MainScreen
 import com.example.mindlens.screens.splash.OnboardingScreen
 import com.example.mindlens.screens.splash.SplashScreen
 import com.example.mindlens.ui.DailyDiaryTheme
-import kotlinx.serialization.json.Json
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -48,14 +39,14 @@ object Routes {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavigation() {
-    val navController = rememberNavController()
+    val rootNavController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = Routes.Splash) {
+    NavHost(navController = rootNavController, startDestination = Routes.Splash) {
 
         // 1. Splash Screen
         composable(Routes.Splash) {
             SplashScreen(
-                navController = navController,
+                navController = rootNavController,
             )
         }
 
@@ -63,66 +54,38 @@ fun AppNavigation() {
         composable(Routes.Onboarding) {
             OnboardingScreen(
                 onOnboardingFinished = {
-                    navController.navigate(Routes.RegisterOptions) {
+                    rootNavController.navigate(Routes.RegisterOptions) {
                         popUpTo(Routes.Onboarding) { inclusive = true }
                     }
                 }
             )
         }
 
-        // 3. Register Options (Layar Auth)
+        // 3. Register Options
         composable(Routes.RegisterOptions) {
             RegisterOptionsScreen(
-                navController = navController
+                navController = rootNavController
             )
         }
 
+        // 4. Login
         composable(Routes.NativeLogin) {
             NativeLoginScreen(
-                navController = navController
+                navController = rootNavController
             )
         }
 
-        // 4. Main App (Dashboard dengan Navbar)
+        // 5. Main App (Dashboard)
         composable(Routes.MainApp) {
-            MainScreen()
-        }
-
-        composable(Screen.Articles.route) {
-            ArticleScreen(
-                onArticleClick = { article ->
-                    // Pass data via SavedStateHandle
-                    navController.currentBackStackEntry?.savedStateHandle?.set("article", article)
-                    navController.navigate(Screen.ArticleDetail.route)
+            // PERBAIKAN: Masukkan parameter onLogout di sini
+            MainScreen(
+                onLogout = {
+                    // Logic Logout: Kembali ke halaman Login & hapus history backstack
+                    rootNavController.navigate(Routes.RegisterOptions) {
+                        popUpTo(Routes.MainApp) { inclusive = true }
+                    }
                 }
             )
-        }
-
-        composable(Screen.ArticleDetail.route) {
-            // Retrieve data
-            val article = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<Article>("article")
-
-            if (article != null) {
-                ArticleDetailScreen(article = article, onBack = { navController.popBackStack() })
-            }
-        }
-
-        composable(
-            route = "detail/{entry}",
-            arguments = listOf(navArgument("entry") { type = NavType.StringType })
-        ) { backStackEntry ->
-            // Retrieve and Deserialize the object
-            val entryJson = backStackEntry.arguments?.getString("entry")
-            val entry = entryJson?.let { Json.decodeFromString<DiaryEntry>(it) }
-
-            if (entry != null) {
-                DiaryDetailScreen(
-                    entry = entry,
-                    onBackClick = { navController.popBackStack() }
-                )
-            }
         }
     }
 }
