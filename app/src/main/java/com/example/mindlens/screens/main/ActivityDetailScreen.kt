@@ -7,7 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
@@ -21,14 +21,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.mindlens.ui.* // Ensure this import matches your package structure
+import com.example.mindlens.ui.* // Pastikan ini mengimpor warna dari Theme.kt Anda
 
 // --- DATA MODEL ---
 data class ExerciseMock(
     val id: String,
     val title: String,
     val duration: String,
-    val videoId: String,      // ID YouTube
+    val videoId: String,      // ID YouTube (bukan URL lengkap)
     val imageUrl: String,
     val description: String,
     val steps: List<String>
@@ -37,43 +37,44 @@ data class ExerciseMock(
 // Helper Thumbnail YouTube
 fun getYoutubeThumbnail(videoId: String) = "https://img.youtube.com/vi/$videoId/mqdefault.jpg"
 
-// --- DATA DUMMY (Fixed Image URLs) ---
+// --- DATA DUMMY ---
 val allExercises = listOf(
+    // YOGA
     ExerciseMock(
         id = "yoga_1",
         title = "Morning Sun Salutation",
         duration = "10 min",
-        videoId = "ZP34IA0d8LI",
-        // Direct image link from Unsplash
+        videoId = "ZP34IA0d8LI", // Valid ID
         imageUrl = "https://images.unsplash.com/photo-1544367563-12123d896889?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-        description = "Awaken your body with this flow.",
-        steps = listOf("Step 1: Stand tall", "Step 2: Inhale arms up", "Step 3: Fold forward")
+        description = "Awaken your body with this flow to start your day with energy.",
+        steps = listOf("Stand tall", "Inhale arms up", "Fold forward")
     ),
     ExerciseMock(
         id = "yoga_2",
         title = "Yoga for Stress Relief",
         duration = "15 min",
-        videoId = "hJbRpHZr_d0",
+        videoId = "hJbRpHZr_d0", // Valid ID
         imageUrl = "https://images.unsplash.com/photo-1506126613408-eca07ce68773?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-        description = "Hilangkan stres dan ketegangan otot.",
-        steps = listOf("Step 1: Child's pose", "Step 2: Cat-Cow stretch")
+        description = "Hilangkan stres dan ketegangan otot setelah seharian bekerja.",
+        steps = listOf("Child's pose", "Cat-Cow stretch", "Downward Dog")
     ),
+    // MEDITATION
     ExerciseMock(
         id = "med_1",
-        title = "5 Min Meditation",
+        title = "5 Min Mindfulness",
         duration = "5 min",
-        videoId = "HNab2YqCCiM",
+        videoId = "HNab2YqCCiM", // Valid ID (diganti ke video mindfulness umum jika perlu)
         imageUrl = "https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-        description = "Meditasi cepat untuk fokus kembali.",
-        steps = listOf("Sit comfortably", "Focus on breath")
+        description = "Meditasi cepat untuk mengembalikan fokus dan ketenangan.",
+        steps = listOf("Sit comfortably", "Focus on breath", "Let go of thoughts")
     ),
     ExerciseMock(
         id = "med_2",
         title = "Deep Sleep Music",
         duration = "20 min",
-        videoId = "IVDuU3anYCI",
+        videoId = "IVDuU3anYCI", // Valid ID (Video Relaxing)
         imageUrl = "https://images.unsplash.com/photo-1515023115689-589c33041697?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-        description = "Musik relaksasi untuk tidur nyenyak.",
+        description = "Musik relaksasi dan panduan visual untuk tidur nyenyak.",
         steps = listOf("Lie down", "Close eyes", "Relax muscles")
     )
 )
@@ -81,17 +82,18 @@ val allExercises = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivityDetailScreen(
-    activityType: String,
+    activityType: String, // "Yoga" atau "Meditation" (dikirim dari MainScreen)
     onBack: () -> Unit,
-    onVideoClick: (String, String, String) -> Unit
+    onVideoClick: (String, String, String) -> Unit // (videoId, title, desc)
 ) {
+    // Filter data berdasarkan tipe aktivitas yang dipilih
     val exercises = when(activityType) {
         "Yoga" -> allExercises.filter { it.id.startsWith("yoga") }
         "Meditation" -> allExercises.filter { it.id.startsWith("med") }
         else -> emptyList()
     }
 
-    // Fixed Hero Images
+    // Gambar Header Dinamis
     val heroImage = when(activityType) {
         "Yoga" -> "https://images.unsplash.com/photo-1599447421405-075710062669?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"
         "Meditation" -> "https://images.unsplash.com/photo-1528319725582-ddc096101511?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"
@@ -101,15 +103,26 @@ fun ActivityDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("$activityType Session", fontWeight = FontWeight.Bold, color = TechTextPrimary) },
+                title = {
+                    Text(
+                        "$activityType Session",
+                        fontWeight = FontWeight.Bold,
+                        color = TechTextPrimary
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = TechTextPrimary)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = TechTextPrimary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = TechBackground)
             )
-        }
+        },
+        containerColor = TechBackground
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -117,8 +130,9 @@ fun ActivityDetailScreen(
                 .background(TechBackground)
                 .padding(padding)
                 .padding(horizontal = 24.dp),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = 100.dp) // Padding bawah agar tidak ketutup navbar
         ) {
+            // --- HEADER SECTION ---
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Card(
@@ -133,22 +147,44 @@ fun ActivityDetailScreen(
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
-                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
-                        Column(modifier = Modifier.align(Alignment.BottomStart).padding(20.dp)) {
-                            Text("Start your journey", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text("${exercises.size} sessions available", color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyMedium)
+                        // Overlay Gelap agar teks terbaca
+                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)))
+
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(20.dp)
+                        ) {
+                            Text(
+                                "Start your journey",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "${exercises.size} sessions available",
+                                color = Color.White.copy(alpha = 0.9f),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                Text("Select Session", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechTextPrimary)
+                Text(
+                    "Select Session",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TechTextPrimary
+                )
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
+            // --- LIST EXERCISES ---
             items(exercises) { exercise ->
                 ExerciseItemCard(
                     exercise = exercise,
                     onClick = {
+                        // Panggil Callback untuk navigasi ke VideoPlayerScreen
                         onVideoClick(exercise.videoId, exercise.title, exercise.description)
                     }
                 )
@@ -164,28 +200,66 @@ fun ExerciseItemCard(exercise: ExerciseMock, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = TechSurface),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp),
-        modifier = Modifier.fillMaxWidth().clickable { onClick() }
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(100.dp, 70.dp)) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Thumbnail YouTube
+            Box(modifier = Modifier.size(120.dp, 80.dp)) {
                 AsyncImage(
                     model = getYoutubeThumbnail(exercise.videoId),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp))
                 )
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.3f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                // Overlay Play Icon
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
                 }
             }
+
             Spacer(modifier = Modifier.width(16.dp))
+
+            // Info Text
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = exercise.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TechTextPrimary, maxLines = 2)
-                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = exercise.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = TechTextPrimary,
+                    maxLines = 2
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Timer, null, tint = TechPrimary, modifier = Modifier.size(12.dp))
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = null,
+                        tint = TechPrimary,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = exercise.duration, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TechPrimary)
+                    Text(
+                        text = exercise.duration,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TechPrimary
+                    )
                 }
             }
         }

@@ -1,7 +1,6 @@
 package com.example.mindlens.screens.main
 
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
@@ -15,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.rounded.*
@@ -32,17 +32,23 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner // Import Baru
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle // Import Baru
+import androidx.lifecycle.LifecycleEventObserver // Import Baru
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mindlens.ui.* // Pastikan package theme benar
 import com.example.mindlens.data.DiaryEntry
 import com.example.mindlens.helpers.formatDiaryDate
+import com.example.mindlens.ui.*
+import com.example.mindlens.ui.HomeUiEvent
+import com.example.mindlens.ui.HomeViewModel
+import com.example.mindlens.ui.WeeklyData
 import com.example.mindlens.ui.components.CustomToast
 import com.example.mindlens.viewModel.AuthViewModel
 
-// --- DATA MODELS ---
+// --- DATA MODELS UI LOKAL ---
 data class ActivityItem(
     val title: String,
     val duration: String,
@@ -54,12 +60,6 @@ data class ArticleItem(
     val title: String,
     val category: String,
     val readTime: String
-)
-
-data class WeeklyData(
-    val day: String,
-    val score: Float,
-    val color: Color
 )
 
 data class HomeScanItem(
@@ -75,118 +75,140 @@ val dummyHomeScans = listOf(
 )
 
 // --- MAIN COMPOSABLE ---
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun HomeScreen(
-    // Parameter Callback Navigasi (PENTING)
     onNavigateToHistory: () -> Unit = {},
     onNavigateToActivity: (String) -> Unit = {},
     onNavigateToBreathing: () -> Unit = {},
     onNavigateToDetail: (DiaryEntry) -> Unit = {},
     onNavigateToPanic: () -> Unit = {},
     onNavigateToScan: () -> Unit = {},
-    // Inject ViewModel (Opsional jika belum siap, pakai default)
-    viewModel: HomeViewModel = viewModel(),
+    viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
     authViewModel: AuthViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val state by viewModel.uiState.collectAsState()
+    val userName = remember { authViewModel.getUserName() }
 
-    val diaryList by viewModel.diaryHistory.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    // --- TAMBAHAN PENTING: REFRESH OTOMATIS SAAT BALIK KE HOME ---
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // Setiap kali layar ini muncul (termasuk saat tombol Back ditekan),
+                // kita paksa muat ulang data dari database
+                viewModel.loadEntries()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    // -----------------------------------------------------------
 
-    // State untuk Dialog Diary (UI State)
+    // State Input Lokal
     var showDiaryDialog by remember { mutableStateOf(false) }
     var selectedMoodForEntry by remember { mutableStateOf("") }
     var selectedColorForEntry by remember { mutableStateOf(Color.Gray) }
+    var diaryTitleText by remember { mutableStateOf("") }
     var diaryInputText by remember { mutableStateOf("") }
-    val userName = remember { authViewModel.getUserName() }
-
-//    val diaryHistory = viewModel.diary
-
-    // --- Toast State ---
     var showSuccessToast by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when(event) {
+                is HomeUiEvent.SaveSuccess -> {
+                    showDiaryDialog = false
+                    showSuccessToast = true
+                    diaryTitleText = ""
+                    diaryInputText = ""
+                    selectedMoodForEntry = ""
+                    selectedColorForEntry = Color.Gray
+                }
+                is HomeUiEvent.ShowMessage -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(TechBackground)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 100.dp) // Padding bawah agar tidak tertutup navbar
+                .padding(bottom = 100.dp)
         ) {
-            // 1. Header Section (Gradient + SOS)
             HomeHeader(onPanicClick = onNavigateToPanic, username = userName)
 
-            // 2. Mood Check-in Section
             MoodCheckInSection(
                 onMoodSelected = { mood, color ->
                     selectedMoodForEntry = mood
-                    showDiaryDialog = true
                     selectedColorForEntry = color
+                    showDiaryDialog = true
                 }
             )
 
-            // 3. Weekly Chart Section
-            WeeklyChartSection()
+            // CHART & TEXT INDIKASI
+            WeeklyChartSection(
+                weeklyData = state.weeklyStats,
+                averageMoodStatus = state.averageMood // Menampilkan status mood terbaru
+            )
 
-
-            // 4. Recent Scans Section
             RecentScansHomeSection(
                 scans = dummyHomeScans,
                 onScanClick = onNavigateToScan
             )
 
-
             Spacer(modifier = Modifier.height(24.dp))
-            // 5. Daily Activities Section (Yoga, Breathing, Meditation)
+
             DailyPhysioSection(
                 onItemClick = { type ->
-                    if (type == "Breathing") {
-                        onNavigateToBreathing() // Panggil callback Breathing
-                    } else {
-                        onNavigateToActivity(type) // Panggil callback Activity List
-                    }
+                    if (type == "Breathing") onNavigateToBreathing() else onNavigateToActivity(type)
                 }
             )
 
-            // 5. Recent History Section (Diary List)
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-            } else if (diaryList.isEmpty()) {
-                // Empty State
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No memories yet. Write one!", color = Color.Gray)
+            // LIST HISTORY TERBARU
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = TechPrimary)
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             } else {
                 RecentHistorySection(
-                    diaryList = diaryList,
-                    onSeeAllClick = onNavigateToHistory, // Panggil callback History
-                    onItemClick = { entry ->
-                        onNavigateToDetail(entry)
-                    }
+                    diaryList = state.entries,
+                    onSeeAllClick = onNavigateToHistory,
+                    onItemClick = { entry -> onNavigateToDetail(entry) }
                 )
             }
-
-            // 6. Recommended Reads Section
             RecommendedReadsSection()
         }
 
-        // --- DIALOG CRUD DIARY ---
+        // --- DIALOG INPUT DIARY ---
         if (showDiaryDialog) {
             AlertDialog(
                 onDismissRequest = { showDiaryDialog = false },
                 containerColor = TechSurface,
                 title = {
-                    Text(
-                        "Feeling $selectedMoodForEntry",
-                        fontWeight = FontWeight.Bold,
-                        color = TechTextPrimary
-                    )
+                    Text("Feeling $selectedMoodForEntry", fontWeight = FontWeight.Bold, color = TechTextPrimary)
                 },
                 text = {
                     Column {
+                        Text("Title", fontSize = 14.sp, color = TechTextSecondary)
+                        OutlinedTextField(
+                            value = diaryTitleText,
+                            onValueChange = { diaryTitleText = it },
+                            placeholder = { Text("Short title...") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            maxLines = 1,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = TechPrimary,
+                                unfocusedBorderColor = TechTextSecondary
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text("What made you feel this way?", fontSize = 14.sp, color = TechTextSecondary)
-                        Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = diaryInputText,
                             onValueChange = { diaryInputText = it },
@@ -195,7 +217,7 @@ fun HomeScreen(
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = TechPrimary,
-                                unfocusedBorderColor = Color.LightGray
+                                unfocusedBorderColor = TechTextSecondary
                             )
                         )
                     }
@@ -203,49 +225,25 @@ fun HomeScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            if (diaryInputText.isNotEmpty()) {
-                                // Panggil fungsi ViewModel untuk menyimpan data
-                                viewModel.saveDiaryEntry(
-                                    content = diaryInputText,
-                                    mood = selectedMoodForEntry.ifEmpty { "Neutral" }, // Fallback mood
-                                    onSuccess = {
-                                        // 2. Close Dialog & Show Toast
-                                        showDiaryDialog = false
-                                        showSuccessToast = true
-
-                                        // 3. Reset inputs
-                                        diaryInputText = ""
-                                        selectedMoodForEntry = ""
-                                    },
-                                    onError = { errorMsg ->
-                                        Log.d("error submit", errorMsg)
-                                        Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
-                                        // Do NOT close dialog here so user can try again
-                                    },
-                                    colorInt = selectedColorForEntry.toArgb(),
-                                )
-
-                                // Reset UI
-                                diaryInputText = ""
-                                showDiaryDialog = false
-                            }
+                            viewModel.saveDiaryEntry(
+                                title = diaryTitleText,
+                                content = diaryInputText,
+                                mood = selectedMoodForEntry.ifEmpty { "Neutral" },
+                                colorInt = selectedColorForEntry.toArgb()
+                            )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
                     ) { Text("Save") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDiaryDialog = false }) {
-                        Text("Cancel", color = TechTextSecondary)
-                    }
-                },
-                // --- The Custom Toast Overlay ---
-                // Placing it here ensures it draws ON TOP of everything
+                    TextButton(onClick = { showDiaryDialog = false }) { Text("Cancel") }
+                }
             )
         }
 
         CustomToast(
             visible = showSuccessToast,
-            message = "Data successfully stored!",
+            message = "Diary saved & Analytics updated!",
             onDismiss = { showSuccessToast = false }
         )
     }
@@ -281,7 +279,6 @@ fun HomeHeader(onPanicClick: () -> Unit, username: String) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
-                // TOMBOL SOS / DARURAT
                 Button(
                     onClick = onPanicClick,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350)),
@@ -298,11 +295,14 @@ fun HomeHeader(onPanicClick: () -> Unit, username: String) {
 
 @Composable
 fun MoodCheckInSection(onMoodSelected: (String, Color) -> Unit) {
+    val colorAwful = Color(0xFFE57373)
+    val colorBad = Color(0xFFFFB74D)
+    val colorNeutral = Color(0xFFFFF176)
+    val colorGood = Color(0xFFAED581)
+    val colorGreat = Color(0xFF64B5F6)
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .offset(y = (-50).dp), // Efek melayang di atas header
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).offset(y = (-50).dp),
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(8.dp),
         colors = CardDefaults.cardColors(containerColor = TechSurface)
@@ -314,21 +314,11 @@ fun MoodCheckInSection(onMoodSelected: (String, Color) -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                MoodButton(Icons.Outlined.SentimentVeryDissatisfied, MoodTerrible, "Awful") {
-                    onMoodSelected(
-                        "Awful",
-                        MoodTerrible
-                    )
-                }
-                MoodButton(Icons.Outlined.SentimentDissatisfied, MoodBad, "Bad") { onMoodSelected("Bad", MoodBad) }
-                MoodButton(Icons.Outlined.SentimentNeutral, MoodNeutral, "Okay") { onMoodSelected("Okay", MoodNeutral) }
-                MoodButton(Icons.Outlined.SentimentSatisfied, MoodGood, "Good") { onMoodSelected("Good", MoodGood) }
-                MoodButton(Icons.Outlined.SentimentVerySatisfied, MoodGreat, "Great") {
-                    onMoodSelected(
-                        "Great",
-                        MoodGreat
-                    )
-                }
+                MoodButton(Icons.Outlined.SentimentVeryDissatisfied, colorAwful, "Awful") { onMoodSelected("Awful", colorAwful) }
+                MoodButton(Icons.Outlined.SentimentDissatisfied, colorBad, "Bad") { onMoodSelected("Bad", colorBad) }
+                MoodButton(Icons.Outlined.SentimentNeutral, colorNeutral, "Okay") { onMoodSelected("Okay", colorNeutral) }
+                MoodButton(Icons.Outlined.SentimentSatisfied, colorGood, "Good") { onMoodSelected("Good", colorGood) }
+                MoodButton(Icons.Outlined.SentimentVerySatisfied, colorGreat, "Great") { onMoodSelected("Great", colorGreat) }
             }
         }
     }
@@ -338,45 +328,26 @@ fun MoodCheckInSection(onMoodSelected: (String, Color) -> Unit) {
 fun MoodButton(icon: ImageVector, color: Color, label: String, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.2f))
-                .clickable { onClick() },
+            modifier = Modifier.size(48.dp).clip(CircleShape).background(color.copy(alpha = 0.2f)).clickable { onClick() },
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(28.dp))
         }
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = TechTextSecondary,
-            fontSize = 10.sp,
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TechTextSecondary, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
 @Composable
-fun WeeklyChartSection() {
-    val weeklyData = listOf(
-        WeeklyData("Mon", 0.2f, MoodBad),
-        WeeklyData("Tue", 0.5f, MoodNeutral),
-        WeeklyData("Wed", 0.8f, MoodGreat),
-        WeeklyData("Thu", 0.6f, MoodGood),
-        WeeklyData("Fri", 0.9f, MoodGreat),
-        WeeklyData("Sat", 0.4f, MoodNeutral),
-        WeeklyData("Sun", 0.7f, MoodGood)
-    )
-
+fun WeeklyChartSection(
+    weeklyData: List<WeeklyData>,
+    averageMoodStatus: String
+) {
     Column(modifier = Modifier.padding(horizontal = 24.dp).offset(y = (-30).dp)) {
-        Text(
-            "Weekly Analytics",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = TechTextPrimary
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        Text("Weekly Analytics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechTextPrimary)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Rata-rata 7 Hari Terakhir:", style = MaterialTheme.typography.labelMedium, color = TechTextSecondary)
+        Text(averageMoodStatus, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TechPrimary)
+        Spacer(modifier = Modifier.height(16.dp))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = TechSurface),
@@ -384,41 +355,38 @@ fun WeeklyChartSection() {
             elevation = CardDefaults.cardElevation(2.dp),
             modifier = Modifier.fillMaxWidth().height(180.dp)
         ) {
-            Box(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-                Canvas(modifier = Modifier.fillMaxSize().padding(bottom = 20.dp)) {
-                    val width = size.width
-                    val height = size.height
-                    val path = Path()
-                    val stepX = width / (weeklyData.size - 1)
+            if (weeklyData.all { it.score == 0f }) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Belum ada aktivitas minggu ini", color = TechTextSecondary)
+                }
+            } else {
+                Box(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+                    Canvas(modifier = Modifier.fillMaxSize().padding(bottom = 20.dp)) {
+                        val width = size.width
+                        val height = size.height
+                        val path = Path()
+                        val stepX = width / (weeklyData.size - 1).coerceAtLeast(1)
 
-                    weeklyData.forEachIndexed { index, data ->
-                        val x = index * stepX
-                        val y = height - (data.score * height)
-                        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                        drawCircle(color = data.color, radius = 12f, center = Offset(x, y))
+                        weeklyData.forEachIndexed { index, data ->
+                            val x = index * stepX
+                            val y = height - (data.score * height * 0.8f)
+                            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                            if (data.score > 0) {
+                                drawCircle(color = data.color, radius = 12f, center = Offset(x, y))
+                                drawCircle(color = Color.White, radius = 6f, center = Offset(x, y))
+                            }
+                        }
+                        drawPath(path = path, color = TechPrimary.copy(alpha = 0.5f), style = Stroke(width = 5f, cap = StrokeCap.Round))
                     }
-                    drawPath(path = path, color = Color.LightGray, style = Stroke(width = 4f, cap = StrokeCap.Round))
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    weeklyData.forEach {
-                        Text(
-                            it.day,
-                            fontSize = 10.sp,
-                            color = TechTextSecondary,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        weeklyData.forEach {
+                            Text(it.day, fontSize = 10.sp, color = if (it.score > 0) TechTextPrimary else TechTextSecondary, fontWeight = if (it.score > 0) FontWeight.Bold else FontWeight.Normal)
+                        }
                     }
                 }
-                Text("Happy", fontSize = 8.sp, color = MoodGreat, modifier = Modifier.align(Alignment.TopStart))
-                Text(
-                    "Sad",
-                    fontSize = 8.sp,
-                    color = MoodTerrible,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 20.dp)
-                )
             }
         }
     }
@@ -433,12 +401,7 @@ fun DailyPhysioSection(onItemClick: (String) -> Unit) {
     )
 
     Column(modifier = Modifier.padding(horizontal = 24.dp).offset(y = (-16).dp)) {
-        Text(
-            "Mind & Body",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = TechTextPrimary
-        )
+        Text("Mind & Body", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechTextPrimary)
         Spacer(modifier = Modifier.height(12.dp))
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -446,17 +409,10 @@ fun DailyPhysioSection(onItemClick: (String) -> Unit) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = item.color.copy(alpha = 0.3f)),
                     shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .width(120.dp)
-                        .clickable { onItemClick(item.title) } // Callback Klik Item
+                    modifier = Modifier.width(120.dp).clickable { onItemClick(item.title) }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Icon(
-                            item.icon,
-                            contentDescription = null,
-                            tint = TechTextPrimary,
-                            modifier = Modifier.size(28.dp)
-                        )
+                        Icon(item.icon, contentDescription = null, tint = TechTextPrimary, modifier = Modifier.size(28.dp))
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(item.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TechTextPrimary)
                         Text(item.duration, fontSize = 12.sp, color = TechTextSecondary)
@@ -474,16 +430,9 @@ fun RecommendedReadsSection() {
         ArticleItem("The Power of Sleep", "Health", "3 min"),
         ArticleItem("Journaling 101", "Productivity", "7 min")
     )
-
     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-        Text(
-            "Recommended for You",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = TechTextPrimary
-        )
+        Text("Recommended for You", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechTextPrimary)
         Spacer(modifier = Modifier.height(12.dp))
-
         articles.forEach { article ->
             Card(
                 colors = CardDefaults.cardColors(containerColor = TechSurface),
@@ -491,24 +440,14 @@ fun RecommendedReadsSection() {
                 elevation = CardDefaults.cardElevation(1.dp),
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp))
-                            .background(TechPrimary.copy(0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(TechPrimary.copy(0.1f)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Outlined.Article, null, tint = TechPrimary)
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(article.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TechTextPrimary)
-                        Row {
-                            Text(article.category, fontSize = 10.sp, color = TechAccent)
-                            Text(" • ${article.readTime}", fontSize = 10.sp, color = TechTextSecondary)
-                        }
+                        Row { Text(article.category, fontSize = 10.sp, color = TechAccent); Text(" • ${article.readTime}", fontSize = 10.sp, color = TechTextSecondary) }
                     }
                 }
             }
@@ -516,156 +455,68 @@ fun RecommendedReadsSection() {
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun RecentHistorySection(
-    diaryList: List<DiaryEntry>,
-    onSeeAllClick: () -> Unit,
-    onItemClick: (DiaryEntry) -> Unit
-) {
+fun RecentHistorySection(diaryList: List<DiaryEntry>, onSeeAllClick: () -> Unit, onItemClick: (DiaryEntry) -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Recent Diaries",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = TechTextPrimary
-            )
-            Text(
-                "See All",
-                color = TechPrimary,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                modifier = Modifier.clickable { onSeeAllClick() } // Callback Klik See All
-            )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Recent Diaries", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechTextPrimary)
+            Text("See All", color = TechPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.clickable { onSeeAllClick() })
         }
-
         Spacer(modifier = Modifier.height(12.dp))
-
         if (diaryList.isEmpty()) {
             Text("No diaries yet. Add one above!", color = TechTextSecondary, fontSize = 12.sp)
         } else {
             diaryList.take(3).forEach { entry ->
-                DiaryItem(entry, onClick = { onItemClick(entry) }) // Callback Klik Diary Item
+                DiaryItem(entry, onClick = { onItemClick(entry) })
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DiaryItem(entry: DiaryEntry, onClick: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = TechSurface),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp),
-        modifier = Modifier.clickable { onClick() } // Enable Click
+        modifier = Modifier.clickable { onClick() }
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(modifier = Modifier.width(4.dp).height(40.dp).clip(RoundedCornerShape(2.dp)))
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.width(4.dp).height(40.dp).clip(RoundedCornerShape(2.dp)).background(Color(entry.color)))
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = entry.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TechTextPrimary,
-                    maxLines = 1
-                )
-                Text(
-                    text = "${formatDiaryDate(entry.createdAt)} • ${entry.title}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TechTextSecondary
-                )
+                Text(entry.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = TechTextPrimary, maxLines = 1)
+                Text("${formatDiaryDate(entry.createdAt)} • ${entry.mood}", style = MaterialTheme.typography.labelSmall, color = TechTextSecondary)
             }
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TechTextSecondary)
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TechTextSecondary)
         }
     }
 }
 
 @Composable
-fun RecentScansHomeSection(
-    scans: List<HomeScanItem>,
-    onScanClick: () -> Unit = {}
-) {
+fun RecentScansHomeSection(scans: List<HomeScanItem>, onScanClick: () -> Unit = {}) {
     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Recent Health Scans",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = TechTextPrimary
-            )
-            // Tombol See All
-            Text(
-                "Scan Now",
-                color = TechPrimary,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                modifier = Modifier.clickable { onScanClick() }
-            )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Recent Health Scans", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechTextPrimary)
+            Text("Scan Now", color = TechPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.clickable { onScanClick() })
         }
-
         Spacer(modifier = Modifier.height(12.dp))
-
         scans.forEach { item ->
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = TechSurface),
                 shape = RoundedCornerShape(12.dp),
                 elevation = CardDefaults.cardElevation(1.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-                    .clickable { onScanClick() }
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onScanClick() }
             ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Ikon Status
-                    Icon(
-                        imageVector = if (item.isRisk) Icons.Default.Warning else Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = if (item.isRisk) Color(0xFFEF5350) else Color(0xFF66BB6A),
-                        modifier = Modifier.size(24.dp)
-                    )
-
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (item.isRisk) Icons.Default.Warning else Icons.Default.CheckCircle, null, tint = if (item.isRisk) Color(0xFFEF5350) else Color(0xFF66BB6A), modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
-
-                    // Teks Info
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.result,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = TechTextPrimary
-                        )
-                        Text(
-                            text = item.date,
-                            fontSize = 12.sp,
-                            color = TechTextSecondary
-                        )
+                        Text(item.result, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TechTextPrimary)
+                        Text(item.date, fontSize = 12.sp, color = TechTextSecondary)
                     }
-
-                    // Persentase
-                    Text(
-                        text = "${item.confidence}%",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        color = TechPrimary
-                    )
+                    Text("${item.confidence}%", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TechPrimary)
                 }
             }
         }
