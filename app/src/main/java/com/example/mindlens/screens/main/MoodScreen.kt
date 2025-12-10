@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,15 +44,13 @@ fun MoodScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    // State untuk Dialog Edit
+    // --- STATE DIALOG EDIT ---
     var showEditDialog by remember { mutableStateOf(false) }
     var entryToEdit by remember { mutableStateOf<DiaryEntry?>(null) }
 
-    // Form State untuk Edit (Judul, Konten, Mood, Warna)
-    var editTitle by remember { mutableStateOf("") }
-    var editContent by remember { mutableStateOf("") }
-    var editMood by remember { mutableStateOf("") }
-    var editColor by remember { mutableStateOf<Long>(0) }
+    // --- STATE DIALOG DELETE (BARU) ---
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var entryToDelete by remember { mutableStateOf<DiaryEntry?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadEntries()
@@ -97,16 +94,13 @@ fun MoodScreen(
                             entry = entry,
                             onClick = { onItemClick(entry) },
                             onEdit = {
-                                // Persiapkan data untuk diedit
                                 entryToEdit = entry
-                                editTitle = entry.title
-                                editContent = entry.content
-                                editMood = entry.mood
-                                editColor = entry.color
                                 showEditDialog = true
                             },
                             onDelete = {
-                                viewModel.deleteDiaryEntry(entry.id)
+                                // JANGAN LANGSUNG HAPUS. Simpan data dulu & buka dialog konfirmasi
+                                entryToDelete = entry
+                                showDeleteDialog = true
                             }
                         )
                     }
@@ -115,78 +109,141 @@ fun MoodScreen(
             }
         }
 
-        // --- DIALOG EDIT LENGKAP ---
+        // --- DIALOG 1: EDIT FORM ---
         if (showEditDialog && entryToEdit != null) {
+            EditDiaryDialog(
+                entry = entryToEdit!!,
+                onDismiss = { showEditDialog = false },
+                onConfirm = { updatedEntry ->
+                    viewModel.updateDiaryEntry(updatedEntry)
+                    showEditDialog = false
+                }
+            )
+        }
+
+        // --- DIALOG 2: DELETE CONFIRMATION (BARU) ---
+        if (showDeleteDialog && entryToDelete != null) {
             AlertDialog(
-                onDismissRequest = { showEditDialog = false },
+                onDismissRequest = { showDeleteDialog = false },
                 containerColor = TechSurface,
-                title = { Text("Edit Diary", fontWeight = FontWeight.Bold, color = TechTextPrimary) },
+                title = {
+                    Text("Delete Entry?", fontWeight = FontWeight.Bold, color = TechTextPrimary)
+                },
                 text = {
-                    Column {
-                        // 1. Edit Judul
-                        Text("Title", fontSize = 14.sp, color = TechTextSecondary)
-                        OutlinedTextField(
-                            value = editTitle,
-                            onValueChange = { editTitle = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // 2. Edit Mood (Pilih Icon Baru)
-                        Text("Change Mood", fontSize = 14.sp, color = TechTextSecondary)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        EditMoodSelector(
-                            currentMood = editMood,
-                            onMoodSelected = { mood, color ->
-                                editMood = mood
-                                editColor = color.toArgb().toLong()
-                            }
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // 3. Edit Konten
-                        Text("Content", fontSize = 14.sp, color = TechTextSecondary)
-                        OutlinedTextField(
-                            value = editContent,
-                            onValueChange = { editContent = it },
-                            modifier = Modifier.fillMaxWidth().height(120.dp)
-                        )
-                    }
+                    Text(
+                        "Are you sure you want to delete \"${entryToDelete?.title}\"? This action cannot be undone.",
+                        color = TechTextSecondary
+                    )
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            // Update data ke ViewModel
-                            val updatedEntry = entryToEdit!!.copy(
-                                title = editTitle,
-                                content = editContent,
-                                mood = editMood,     // Mood Baru
-                                color = editColor    // Warna Baru
-                            )
-                            viewModel.updateDiaryEntry(updatedEntry)
-                            showEditDialog = false
+                            // Eksekusi Hapus di sini
+                            viewModel.deleteDiaryEntry(entryToDelete!!.id)
+                            showDeleteDialog = false
+                            entryToDelete = null
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
-                    ) { Text("Update") }
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350)) // Warna Merah
+                    ) {
+                        Text("Delete", color = Color.White)
+                    }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showEditDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel", color = TechTextSecondary)
+                    }
                 }
             )
         }
     }
 }
 
-// --- KOMPONEN PEMILIH MOOD DI DALAM DIALOG ---
+// --- KOMPONEN BARU: DIALOG EDIT TERPISAH ---
+@Composable
+fun EditDiaryDialog(
+    entry: DiaryEntry,
+    onDismiss: () -> Unit,
+    onConfirm: (DiaryEntry) -> Unit
+) {
+    var editTitle by remember { mutableStateOf(entry.title) }
+    var editContent by remember { mutableStateOf(entry.content) }
+    var editMood by remember { mutableStateOf(entry.mood) }
+    var editColor by remember { mutableStateOf(entry.color) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = TechSurface,
+        title = { Text("Edit Diary", fontWeight = FontWeight.Bold, color = TechTextPrimary) },
+        text = {
+            Column {
+                Text("Title", fontSize = 14.sp, color = TechTextSecondary)
+                OutlinedTextField(
+                    value = editTitle,
+                    onValueChange = { editTitle = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = TechPrimary,
+                        unfocusedBorderColor = TechTextSecondary,
+                        focusedTextColor = TechTextPrimary,
+                        unfocusedTextColor = TechTextPrimary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("Change Mood", fontSize = 14.sp, color = TechTextSecondary)
+                Spacer(modifier = Modifier.height(8.dp))
+                EditMoodSelector(
+                    currentMood = editMood,
+                    onMoodSelected = { mood, color ->
+                        editMood = mood
+                        editColor = color.toArgb().toLong()
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("Content", fontSize = 14.sp, color = TechTextSecondary)
+                OutlinedTextField(
+                    value = editContent,
+                    onValueChange = { editContent = it },
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = TechPrimary,
+                        unfocusedBorderColor = TechTextSecondary,
+                        focusedTextColor = TechTextPrimary,
+                        unfocusedTextColor = TechTextPrimary
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val updatedData = entry.copy(
+                        title = editTitle,
+                        content = editContent,
+                        mood = editMood,
+                        color = editColor
+                    )
+                    onConfirm(updatedData)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
+            ) { Text("Update") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+// --- KOMPONEN PEMILIH MOOD ---
 @Composable
 fun EditMoodSelector(
     currentMood: String,
     onMoodSelected: (String, Color) -> Unit
 ) {
-    // Definisi Data Mood (Sama seperti di Home)
     val moodList = listOf(
         Triple("Awful", Color(0xFFE57373), Icons.Outlined.SentimentVeryDissatisfied),
         Triple("Bad", Color(0xFFFFB74D), Icons.Outlined.SentimentDissatisfied),
@@ -207,7 +264,6 @@ fun EditMoodSelector(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        // Tambahkan border jika dipilih
                         .border(
                             width = if (isSelected) 2.dp else 0.dp,
                             color = if (isSelected) TechPrimary else Color.Transparent,
@@ -257,7 +313,6 @@ fun DiaryItemWithAction(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Garis Warna
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -267,7 +322,6 @@ fun DiaryItemWithAction(
             )
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Teks Judul & Tanggal
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = entry.title,
@@ -283,7 +337,6 @@ fun DiaryItemWithAction(
                 )
             }
 
-            // Menu Dropdown (Titik Tiga)
             Box {
                 IconButton(onClick = { expanded = true }) {
                     Icon(
@@ -309,7 +362,7 @@ fun DiaryItemWithAction(
                         text = { Text("Delete", color = Color.Red) },
                         onClick = {
                             expanded = false
-                            onDelete()
+                            onDelete() // Ini akan memicu callback yang membuka dialog
                         },
                         leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color.Red) }
                     )
