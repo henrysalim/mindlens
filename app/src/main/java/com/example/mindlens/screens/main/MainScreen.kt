@@ -11,29 +11,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel // Import ini
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.mindlens.navigations.Screen
+import com.example.mindlens.ui.HomeViewModel // Import ViewModel
 import com.example.mindlens.ui.PrimaryGreen
 import com.example.mindlens.ui.TextBlack
-
-// --- IMPORT DATA ---
 import com.example.mindlens.data.Article
 import com.example.mindlens.data.DiaryEntry
-
-// --- IMPORT SCREENS ---
 import com.example.mindlens.screens.article.ArticleScreen
 import com.example.mindlens.screens.article.ArticleDetailScreen
 import com.example.mindlens.screens.profile.*
 import com.example.mindlens.screens.main.DepressionClassifierScreen
-import com.example.mindlens.screens.main.ActivityDetailScreen
-import com.example.mindlens.screens.main.BreathingScreen
-// Pastikan VideoPlayerScreen diimport jika ada file terpisah, atau pastikan Screen.VideoPlayer ada di Screen.kt
-import com.example.mindlens.screens.main.VideoPlayerScreen
-
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -42,6 +35,10 @@ fun MainScreen(
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
+
+    // --- 1. BUAT VIEWMODEL DI SINI (SHARED STATE) ---
+    // Ini kuncinya! Kita buat 1 ViewModel untuk dipakai ramai-ramai.
+    val sharedViewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
 
     val items = listOf(
         Screen.Home to Icons.Outlined.Home,
@@ -90,26 +87,20 @@ fun MainScreen(
             startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // --- 1. HOME SCREEN ---
+            // --- HOME SCREEN ---
             composable(Screen.Home.route) {
                 HomeScreen(
+                    viewModel = sharedViewModel, // <-- Oper ViewModel yang sama
                     onNavigateToHistory = { navController.navigate(Screen.DiaryHistory.route) },
                     onNavigateToActivity = { type -> navController.navigate(Screen.ActivityDetail.createRoute(type)) },
                     onNavigateToBreathing = { navController.navigate(Screen.BreathingExercise.route) },
-
-                    // --- UPDATE BAGIAN INI (Navigasi Pindah Tab) ---
                     onNavigateToScan = {
                         navController.navigate(Screen.DepressionDetection.route) {
-                            // Logic ini menyamakan perilaku dengan klik Bottom Bar
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
                     },
-                    // -----------------------------------------------
-
                     onNavigateToDetail = { entry ->
                         val entryJson = Json.encodeToString(entry)
                         val encodedJson = Uri.encode(entryJson)
@@ -118,35 +109,29 @@ fun MainScreen(
                 )
             }
 
-            // --- 2. FITUR LAIN ---
+            // --- MAP SCREEN (EMOTIONAL JOURNEY) ---
             composable(Screen.PsychologistMap.route) {
-                PsychologistMapScreen()
-            }
-
-            composable(Screen.DepressionDetection.route) {
-                DepressionClassifierScreen() // Tidak perlu onBack lagi
-            }
-
-            // --- 3. ARTIKEL ---
-            composable(Screen.Articles.route) {
-                ArticleScreen(
-                    onArticleClick = { article ->
-                        navController.currentBackStackEntry?.savedStateHandle?.set("article_data", article)
-                        navController.navigate(Screen.ArticleDetail.route)
-                    }
+                PsychologistMapScreen(
+                    viewModel = sharedViewModel // <-- Oper ViewModel yang sama, jadi dia tahu kalau ada data baru!
                 )
             }
-            composable(Screen.ArticleDetail.route) {
-                val article = navController.previousBackStackEntry?.savedStateHandle?.get<Article>("article_data")
-                if (article != null) {
-                    ArticleDetailScreen(
-                        article = article,
-                        onBack = { navController.popBackStack() }
-                    )
-                }
+
+            // ... (Kode routing lainnya tetap sama, tidak perlu diubah) ...
+
+            composable(Screen.DepressionDetection.route) { DepressionClassifierScreen() }
+
+            composable(Screen.Articles.route) {
+                ArticleScreen(onArticleClick = { article ->
+                    navController.currentBackStackEntry?.savedStateHandle?.set("article_data", article)
+                    navController.navigate(Screen.ArticleDetail.route)
+                })
             }
 
-            // --- 4. PROFILE ---
+            composable(Screen.ArticleDetail.route) {
+                val article = navController.previousBackStackEntry?.savedStateHandle?.get<Article>("article_data")
+                if (article != null) ArticleDetailScreen(article = article, onBack = { navController.popBackStack() })
+            }
+
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     onNavigateToEdit = { navController.navigate(Screen.EditProfile.route) },
@@ -156,14 +141,16 @@ fun MainScreen(
                     onLogout = onLogout
                 )
             }
+            // ... Sub-screen Profile (Edit, Password, dll) ...
             composable(Screen.EditProfile.route) { EditProfileScreen(onBack = { navController.popBackStack() }) }
             composable(Screen.ChangePassword.route) { ChangePasswordScreen(onBack = { navController.popBackStack() }) }
             composable(Screen.AboutApp.route) { AboutAppScreen(onBack = { navController.popBackStack() }) }
             composable(Screen.TermsConditions.route) { TermsConditionsScreen(onBack = { navController.popBackStack() }) }
 
-            // --- 5. HISTORY & DETAIL (DIARY) ---
+            // ... History & Detail ...
             composable(Screen.DiaryHistory.route) {
                 MoodScreen(
+                    viewModel = sharedViewModel, // MoodScreen juga boleh pakai shared jika perlu
                     onBackClick = { navController.popBackStack() },
                     onItemClick = { entry: DiaryEntry ->
                         val entryJson = Json.encodeToString(entry)
@@ -179,47 +166,26 @@ fun MainScreen(
             ) { backStackEntry ->
                 val entryJson = backStackEntry.arguments?.getString("entry")
                 val entry = entryJson?.let { Json.decodeFromString<DiaryEntry>(it) }
-                if (entry != null) {
-                    DiaryDetailScreen(
-                        entry = entry,
-                        onBackClick = { navController.popBackStack() }
-                    )
-                }
+                if (entry != null) DiaryDetailScreen(entry = entry, onBackClick = { navController.popBackStack() })
             }
 
-            // --- 6. ACTIVITY, VIDEO & BREATHING ---
-
-            // Perbaikan di sini: Menambahkan parameter onVideoClick
+            // ... Activity ...
             composable(Screen.ActivityDetail.route) { backStackEntry ->
                 val type = backStackEntry.arguments?.getString("type") ?: "Activity"
-                ActivityDetailScreen(
-                    activityType = type,
-                    onBack = { navController.popBackStack() },
-                    onVideoClick = { videoId, title, desc ->
-                        // Navigasi ke VideoPlayerScreen
-                        navController.navigate(Screen.VideoPlayer.createRoute(videoId, title, desc))
-                    }
-                )
+                ActivityDetailScreen(activityType = type, onBack = { navController.popBackStack() }, onVideoClick = { vid, tit, desc ->
+                    navController.navigate(Screen.VideoPlayer.createRoute(vid, tit, desc))
+                })
             }
 
-            // Route untuk Video Player
             composable(Screen.VideoPlayer.route) { backStackEntry ->
                 val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
                 val title = backStackEntry.arguments?.getString("title") ?: ""
                 val desc = backStackEntry.arguments?.getString("desc") ?: ""
-
-                VideoPlayerScreen(
-                    videoId = videoId,
-                    title = title,
-                    description = desc,
-                    onBack = { navController.popBackStack() }
-                )
+                VideoPlayerScreen(videoId, title, desc, onBack = { navController.popBackStack() })
             }
 
             composable(Screen.BreathingExercise.route) {
-                BreathingScreen(
-                    onBack = { navController.popBackStack() }
-                )
+                BreathingScreen(onBack = { navController.popBackStack() })
             }
         }
     }

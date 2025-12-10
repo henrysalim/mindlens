@@ -28,5 +28,9 @@ data class DiaryEntry(
 
     // Mencocokkan kolom "created_at"
     @SerialName("created_at")
-    val createdAt: String
+    val createdAt: String,
+
+    @SerialName("latitude") val latitude: Double? = null,  // Nullable jika user matikan GPS
+
+    @SerialName("longitude") val longitude: Double? = null
 )

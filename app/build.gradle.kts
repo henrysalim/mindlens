@@ -163,5 +163,6 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("io.github.jan-tennert.supabase:auth-kt:3.0.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 }
 

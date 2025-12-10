@@ -1,8 +1,9 @@
 package com.example.mindlens.screens.main
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -10,251 +11,187 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import com.example.mindlens.ui.*
+import androidx.core.content.ContextCompat
+import com.example.mindlens.ui.HomeViewModel
+import com.example.mindlens.ui.TechPrimary
+import com.example.mindlens.ui.TechTextPrimary
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
-
-// --- 1. DATA MODEL PSIKOLOG ---
-data class Psychologist(
-    val id: String,
-    val name: String,
-    val specialty: String,
-    val location: LatLng, // Koordinat Google Maps
-    val rating: Double,
-    val distance: String,
-    val isOpen: Boolean,
-    val imageUrl: String,
-    val address: String
-)
-
-// --- 2. DUMMY DATA (Disebar di sekitar Monas Jakarta biar kelihatan) ---
-val jakartaCenter = LatLng(-6.175392, 106.827153) // Monas
-
-val psychologists = listOf(
-    Psychologist("1", "Dr. Sarah Wijaya", "Clinical Psychologist", LatLng(-6.175, 106.823), 4.8, "0.5 km", true, "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=200", "Jl. Merdeka Barat No. 12"),
-    Psychologist("2", "Dr. Budi Santoso", "Psychiatrist", LatLng(-6.178, 106.829), 4.5, "1.2 km", true, "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=200", "Jl. Kebon Sirih No. 45"),
-    Psychologist("3", "MindCare Center", "Counseling", LatLng(-6.171, 106.826), 4.9, "0.8 km", false, "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200", "Jl. Majapahit No. 88"),
-    Psychologist("4", "Amanda Putri, M.Psi", "Child Therapist", LatLng(-6.174, 106.832), 4.7, "1.5 km", true, "https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=200", "Jl. Medan Merdeka Timur")
-)
+import java.util.Calendar
 
 @Composable
-fun PsychologistMapScreen() {
-    // State Kamera Map (Start di Jakarta)
+fun PsychologistMapScreen(
+    viewModel: HomeViewModel
+) {
+    val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+    // Lokasi Default: Tangerang
+    val tangerang = LatLng(-6.1702, 106.6403)
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(jakartaCenter, 14f)
+        position = CameraPosition.fromLatLngZoom(tangerang, 13f)
     }
 
-    // State untuk Psikolog yang dipilih (diklik markernya)
-    var selectedPsychologist by remember { mutableStateOf<Psychologist?>(null) }
+    var hasPermission by remember { mutableStateOf(false) }
+    var userLocation by remember { mutableStateOf<LatLng?>(null) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            hasPermission = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            hasPermission = true
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
+        }
+    }
+
+    LaunchedEffect(hasPermission) {
+        if (hasPermission) {
+            try {
+                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    if (location != null) {
+                        val currentLatLng = LatLng(location.latitude, location.longitude)
+                        userLocation = currentLatLng
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(currentLatLng, 15f)
+                    }
+                }
+            } catch (e: SecurityException) {}
+        }
+    }
+
+    // Filter Data 7 Hari Terakhir
+    val recentDiaries = remember(state.entries) {
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DAY_OF_YEAR, -7)
+        state.entries.filter { entry ->
+            (entry.latitude != null && entry.latitude != 0.0) &&
+                    (entry.longitude != null && entry.longitude != 0.0)
+        }
+    }
+
+    // --- HITUNG STATISTIK 5 KATEGORI ---
+    val moodCounts = remember(recentDiaries) {
+        mapOf(
+            "Great" to recentDiaries.count { it.mood.lowercase() in listOf("great", "amazing", "bahagia") },
+            "Good" to recentDiaries.count { it.mood.lowercase() in listOf("good", "senang") },
+            "Neutral" to recentDiaries.count { it.mood.lowercase() in listOf("okay", "neutral", "biasa") },
+            "Bad" to recentDiaries.count { it.mood.lowercase() in listOf("bad", "buruk") },
+            "Awful" to recentDiaries.count { it.mood.lowercase() in listOf("awful", "terrible", "sedih") }
+        )
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-
-        // --- 3. GOOGLE MAPS ---
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
-            uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false) // UI Bersih
+            properties = MapProperties(isMyLocationEnabled = hasPermission),
+            uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false)
         ) {
-            // Render Marker untuk setiap Psikolog
-            psychologists.forEach { psy ->
-                Marker(
-                    state = MarkerState(position = psy.location),
-                    title = psy.name,
-                    snippet = psy.specialty,
-                    onClick = {
-                        selectedPsychologist = psy // Simpan data yang diklik
-                        false // Return false agar default behavior (center camera) tetap jalan
-                    },
-                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(
-                        if (selectedPsychologist == psy) 120f else 200f // Ganti warna marker jika dipilih (Hue)
+            recentDiaries.forEach { diary ->
+                if (diary.latitude != null && diary.longitude != null) {
+                    val position = LatLng(diary.latitude, diary.longitude)
+                    val (hue, emoji) = getMoodAttributes(diary.mood)
+
+                    Marker(
+                        state = MarkerState(position = position),
+                        title = "$emoji ${diary.mood}",
+                        snippet = diary.title,
+                        icon = BitmapDescriptorFactory.defaultMarker(hue)
                     )
-                )
+                }
             }
         }
 
-        // --- 4. FLOATING SEARCH BAR (ATAS) ---
-        Column(
+        // --- KARTU STATISTIK (DENGAN 5 KATEGORI) ---
+        Card(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 48.dp, start = 16.dp, end = 16.dp)
+                .padding(top = 50.dp, start = 16.dp, end = 16.dp)
+                .align(Alignment.TopCenter),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(6.dp)
         ) {
-            // Search Input
-            Card(
-                shape = RoundedCornerShape(30.dp),
-                elevation = CardDefaults.cardElevation(8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 16.dp).fillMaxSize()
+                Text("Emotional Journey Map", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TechTextPrimary)
+                Text("Jejak perasaanmu 7 hari terakhir", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Scrollable Row agar muat 5 item
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    Icon(Icons.Default.Search, "Search", tint = TechTextSecondary)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Search psychologist...", color = TechTextSecondary, modifier = Modifier.weight(1f))
-                    Icon(Icons.Default.Mic, "Voice", tint = TechPrimary)
-                }
-            }
-
-            // Filter Chips (Scrollable)
-            Spacer(modifier = Modifier.height(12.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf("Nearest", "Top Rated", "Open Now", "Specialist")) { filter ->
-                    FilterChipItem(filter)
+                    item { StatItem(Color(0xFF64B5F6), "Great", moodCounts["Great"] ?: 0) } // Biru
+                    item { StatItem(Color(0xFFAED581), "Good", moodCounts["Good"] ?: 0) }   // Hijau
+                    item { StatItem(Color(0xFFFFF176), "Okay", moodCounts["Neutral"] ?: 0) } // Kuning
+                    item { StatItem(Color(0xFFFFB74D), "Bad", moodCounts["Bad"] ?: 0) }     // Oranye
+                    item { StatItem(Color(0xFFE57373), "Awful", moodCounts["Awful"] ?: 0) } // Merah
                 }
             }
         }
 
-        // --- 5. FLOATING INFO CARD (BAWAH) ---
-        // Animasi: Muncul dari bawah saat marker diklik
-        AnimatedVisibility(
-            visible = selectedPsychologist != null,
-            enter = slideInVertically { it },
-            exit = slideOutVertically { it },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 100.dp) // Padding agar tidak tertutup Navbar
-                .padding(horizontal = 16.dp)
+        FloatingActionButton(
+            onClick = {
+                val target = userLocation ?: tangerang
+                cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(target, 15f))
+            },
+            containerColor = Color.White,
+            contentColor = TechPrimary,
+            shape = CircleShape,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 110.dp, end = 16.dp)
         ) {
-            selectedPsychologist?.let { psy ->
-                PsychologistDetailCard(
-                    psy = psy,
-                    onClose = { selectedPsychologist = null },
-                    onNavigate = {
-                        // Arahkan kamera map ke lokasi dia
-                        cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(psy.location, 16f))
-                    }
-                )
-            }
-        }
-
-        // Tombol "My Location" (Floating)
-        if (selectedPsychologist == null) {
-            FloatingActionButton(
-                onClick = { cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(jakartaCenter, 14f)) },
-                containerColor = Color.White,
-                contentColor = TechPrimary,
-                shape = CircleShape,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = 110.dp, end = 16.dp)
-            ) {
-                Icon(Icons.Default.MyLocation, contentDescription = "My Location")
-            }
+            Icon(Icons.Default.MyLocation, contentDescription = "My Location")
         }
     }
 }
 
-// --- KOMPONEN UI ---
-
+// --- KOMPONEN PENDUKUNG ---
 @Composable
-fun FilterChipItem(text: String) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = TechPrimary,
-        shadowElevation = 4.dp
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 12.sp
-        )
+fun StatItem(color: Color, label: String, count: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        }
+        Text("$count", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TechTextPrimary)
     }
 }
 
-@Composable
-fun PsychologistDetailCard(psy: Psychologist, onClose: () -> Unit, onNavigate: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Baris Atas: Gambar + Info
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AsyncImage(
-                    model = psy.imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(70.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(psy.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TechTextPrimary)
-                    Text(psy.specialty, fontSize = 14.sp, color = TechTextSecondary)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
-                        Text(" ${psy.rating}", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Text(" • ${psy.distance}", color = TechTextSecondary, fontSize = 12.sp)
-                        if (psy.isOpen) {
-                            Text(" • Open", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        } else {
-                            Text(" • Closed", color = Color.Red, fontSize = 12.sp)
-                        }
-                    }
-                }
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, null, tint = TechTextSecondary)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Divider(color = Color.LightGray.copy(0.3f))
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Alamat
-            Row(verticalAlignment = Alignment.Top) {
-                Icon(Icons.Outlined.LocationOn, null, tint = TechPrimary, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(psy.address, fontSize = 13.sp, color = TechTextSecondary)
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Tombol Aksi
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Button(
-                    onClick = { /* TODO: Call Intent */ },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = TechBackground, contentColor = TechPrimary)
-                ) {
-                    Icon(Icons.Default.Call, null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Call")
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Button(
-                    onClick = onNavigate, // Zoom in map
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
-                ) {
-                    Icon(Icons.Default.Directions, null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Route")
-                }
-            }
-        }
+fun getMoodAttributes(mood: String): Pair<Float, String> {
+    return when (mood.lowercase()) {
+        "great", "amazing", "bahagia" -> Pair(BitmapDescriptorFactory.HUE_AZURE, "🤩") // Biru Langit
+        "good", "senang" -> Pair(BitmapDescriptorFactory.HUE_GREEN, "🙂") // Hijau
+        "neutral", "okay", "biasa" -> Pair(BitmapDescriptorFactory.HUE_YELLOW, "😐") // Kuning
+        "bad", "buruk" -> Pair(BitmapDescriptorFactory.HUE_ORANGE, "😣") // Oranye
+        "awful", "terrible", "sedih" -> Pair(BitmapDescriptorFactory.HUE_RED, "😭") // Merah
+        else -> Pair(BitmapDescriptorFactory.HUE_VIOLET, "📍")
     }
 }
