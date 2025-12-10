@@ -150,6 +150,9 @@ dependencies {
     // Google Maps Compose
     implementation("com.google.maps.android:maps-compose:6.12.0")
 
+    // buat google maps biar ga ngebug
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+
     // CameraX (For your ML Feature)
     val cameraxVersion = "1.5.1"
     implementation("androidx.camera:camera-core:$cameraxVersion")

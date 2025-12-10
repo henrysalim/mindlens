@@ -1,5 +1,7 @@
 package com.example.mindlens.screens.main
 
+import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,24 +32,31 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.mindlens.BuildConfig
 import com.example.mindlens.ui.*
+import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import kotlin.coroutines.EmptyCoroutineContext.get
 
-// --- 1. DATA MODEL PSIKOLOG ---
+// -----------------------------
+// Model & Dummy Data (tidak berubah)
+// -----------------------------
 data class Psychologist(
     val id: String,
     val name: String,
     val specialty: String,
-    val location: LatLng, // Koordinat Google Maps
+    val location: LatLng,
     val rating: Double,
     val distance: String,
     val isOpen: Boolean,
@@ -55,8 +64,7 @@ data class Psychologist(
     val address: String
 )
 
-// --- 2. DUMMY DATA (Disebar di sekitar Monas Jakarta biar kelihatan) ---
-val jakartaCenter = LatLng(-6.175392, 106.827153) // Monas
+val jakartaCenter = LatLng(-6.175392, 106.827153)
 
 val psychologists = listOf(
     Psychologist("1", "Dr. Sarah Wijaya", "Clinical Psychologist", LatLng(-6.175, 106.823), 4.8, "0.5 km", true, "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=200", "Jl. Merdeka Barat No. 12"),
@@ -65,161 +73,209 @@ val psychologists = listOf(
     Psychologist("4", "Amanda Putri, M.Psi", "Child Therapist", LatLng(-6.174, 106.832), 4.7, "1.5 km", true, "https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=200", "Jl. Medan Merdeka Timur")
 )
 
+// -----------------------------
+// Helper: getAccurateLocation (suspend)
+// -----------------------------
+private suspend fun getAccurateLocation(
+    context: Context,
+    fused: FusedLocationProviderClient
+): LatLng? {
+    if (context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+        PackageManager.PERMISSION_GRANTED
+    ) return null
+
+    return try {
+        // Recommended: getCurrentLocation for a fresh location
+        val loc = fused.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
+        loc?.let { LatLng(it.latitude, it.longitude) }
+    } catch (e: SecurityException) {
+        Log.e("Location", "SecurityException in getAccurateLocation: ${e.message}", e)
+        null
+    } catch (e: Exception) {
+        Log.e("Location", "Error getAccurateLocation: ${e.message}", e)
+        null
+    }
+}
+
+// -----------------------------
+// Main Composable: PsychologistMapScreen (safe version)
+// -----------------------------
 @Composable
 fun PsychologistMapScreen() {
-    var nearbyPsychologists by remember { mutableStateOf<List<Psychologist>>(emptyList()) }
-// --- 3. MINTA PERMISSION
     val context = LocalContext.current
-    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
+    var nearbyPsychologists by remember { mutableStateOf<List<Psychologist>>(emptyList()) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
+    var isFetchingPlaces by remember { mutableStateOf(false) }
 
+    val scope = rememberCoroutineScope()
+
+    // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            try {
-                fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
-                    loc?.let { userLocation = LatLng(it.latitude, it.longitude) }
+            // langsung fetch lokasi yang akurat
+            scope.launch {
+                userLocation = getAccurateLocation(context, fusedLocationClient)
+                if (userLocation == null) {
+                    Toast.makeText(context, "Gagal mendapatkan lokasi. Pastikan GPS ON.", Toast.LENGTH_LONG).show()
                 }
-            } catch (e: SecurityException) {
-                Log.e("Location", "Permission denied", e)
             }
+        } else {
+            Toast.makeText(context, "Location permission denied.", Toast.LENGTH_LONG).show()
         }
     }
-// Minta permission otomatis ketika screen dibuka
+
+    val hasLocationPermission by remember {
+        mutableStateOf(
+            context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+
+    // camera state
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(jakartaCenter, 13f)
+    }
+
+    // Launch on first composition: request permission if needed, else fetch
     LaunchedEffect(Unit) {
-        permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        if (context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            userLocation = getAccurateLocation(context, fusedLocationClient)
+        } else {
+            // request permission (this will call the launcher lambda)
+            permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        }
     }
 
-    // PLACES API
-    val placesClient = remember {
-        com.google.android.libraries.places.api.Places.initialize(context, "AIzaSyB-s0xs3DWHJRTADbo8xFn4Ao4rtS89jdE")
-        com.google.android.libraries.places.api.Places.createClient(context)
-    }
-
-    val cameraPositionState = rememberCameraPositionState()
-
-// Animate camera ke user location begitu tersedia
+    // animate camera when userLocation available
     LaunchedEffect(userLocation) {
         userLocation?.let {
-            cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(it, 15f),
-                durationMs = 1000
-            )
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(it, 15f))
         }
     }
 
+    // Fetch nearby places when userLocation available
     LaunchedEffect(userLocation) {
-        userLocation?.let { location ->
-            val url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
-                    "?location=${location.latitude},${location.longitude}" +
-                    "&radius=3000" +
-                    "&keyword=psychologist" +
-                    "&key=${BuildConfig.MAPS_API_KEY}"
+        val location = userLocation ?: return@LaunchedEffect
+        // avoid double fetch
+        if (isFetchingPlaces) return@LaunchedEffect
+        isFetchingPlaces = true
 
-            val client = OkHttpClient()
-            val request = Request.Builder().url(url).build()
+        scope.launch {
+            try {
+                val url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
+                        "?location=${location.latitude},${location.longitude}" +
+                        "&radius=3000" +
+                        "&keyword=psychologist" +
+                        "&key=${BuildConfig.MAPS_API_KEY}"
 
-            withContext(Dispatchers.IO) {
-                val response = client.newCall(request).execute()
-                val body = response.body?.string()
-                if (body != null) {
-                    val json = JSONObject(body)
-                    val results = json.getJSONArray("results")
-                    val tempList = mutableListOf<Psychologist>()
+                val client = OkHttpClient()
+                val request = Request.Builder().url(url).build()
 
-                    for (i in 0 until results.length()) {
-                        val place = results.getJSONObject(i)
-                        val loc = place.getJSONObject("geometry").getJSONObject("location")
-                        val lat = loc.getDouble("lat")
-                        val lng = loc.getDouble("lng")
-
-                        tempList.add(
-                            Psychologist(
-                                id = place.getString("place_id"),
-                                name = place.getString("name"),
-                                specialty = "Psychologist",
-                                location = LatLng(lat, lng),
-                                rating = place.optDouble("rating", 0.0),
-                                distance = "", // nanti bisa dihitung
-                                isOpen = place.optJSONObject("opening_hours")?.optBoolean("open_now") ?: false,
-                                imageUrl = place.optJSONArray("photos")?.optJSONObject(0)?.optString("photo_reference") ?: "",
-                                address = place.optString("vicinity")
-                            )
-                        )
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        nearbyPsychologists = tempList
-                    }
+                val body = withContext(Dispatchers.IO) {
+                    val response = client.newCall(request).execute()
+                    response.body?.string()
                 }
+
+                if (!body.isNullOrEmpty()) {
+                    val json = JSONObject(body)
+                    val results = json.optJSONArray("results")
+                    val tempList = mutableListOf<Psychologist>()
+                    if (results != null) {
+                        for (i in 0 until results.length()) {
+                            val place = results.getJSONObject(i)
+                            val loc = place.getJSONObject("geometry").getJSONObject("location")
+                            val lat = loc.getDouble("lat")
+                            val lng = loc.getDouble("lng")
+
+                            tempList.add(
+                                Psychologist(
+                                    id = place.optString("place_id", i.toString()),
+                                    name = place.optString("name", "Unknown"),
+                                    specialty = "Psychologist",
+                                    location = LatLng(lat, lng),
+                                    rating = place.optDouble("rating", 0.0),
+                                    distance = "",
+                                    isOpen = place.optJSONObject("opening_hours")?.optBoolean("open_now") ?: false,
+                                    imageUrl = place.optJSONArray("photos")?.optJSONObject(0)?.optString("photo_reference") ?: "",
+                                    address = place.optString("vicinity", "")
+                                )
+                            )
+                        }
+                    }
+                    nearbyPsychologists = tempList
+                }
+            } catch (e: Exception) {
+                Log.e("PlacesFetch", "Failed to fetch nearby places: ${e.message}", e)
+            } finally {
+                isFetchingPlaces = false
             }
         }
     }
 
-
-    // State untuk Psikolog yang dipilih (diklik markernya)
-    var selectedPsychologist by remember { mutableStateOf<Psychologist?>(null) }
-
+    // UI
     Box(modifier = Modifier.fillMaxSize()) {
+        // MapProperties: only enable my-location if we have permission
+        val mapProperties = MapProperties(
+            isMyLocationEnabled = context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        )
+        val uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false)
 
-        val hasLocationPermission =
-            context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
-                    android.content.pm.PackageManager.PERMISSION_GRANTED
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            properties = mapProperties,
+            uiSettings = uiSettings
+        ) {
+            // markers from places
+            nearbyPsychologists.forEach { psy ->
+                Marker(
+                    state = MarkerState(position = psy.location),
+                    title = psy.name,
+                    snippet = psy.specialty,
+                    onClick = {
+                        // open details
+                        false
+                    },
+                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(200f)
+                )
+            }
 
-// --- 4. GOOGLE MAPS
-        if (hasLocationPermission) {
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                uiSettings = MapUiSettings(
-                    zoomControlsEnabled = false,
-                    myLocationButtonEnabled = false
-                ), // UI Bersih
-            ) {
-                // Render Marker untuk setiap Psikolog
-                nearbyPsychologists.forEach { psy ->
-                    Marker(
-                        state = MarkerState(position = psy.location),
-                        title = psy.name,
-                        snippet = psy.specialty,
-                        onClick = {
-                            selectedPsychologist = psy // Simpan data yang diklik
-                            false // Return false agar default behavior (center camera) tetap jalan
-                        },
-                        icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(
-                            if (selectedPsychologist == psy) 120f else 200f // Ganti warna marker jika dipilih (Hue)
-                        )
-                    )
-                }
-
-                userLocation?.let { location ->
-                    Marker(
-                        state = MarkerState(position = location),
-                        title = "Your Location",
-                        icon = BitmapDescriptorFactory.defaultMarker(180f)
-                    )
-                }
+            // user location marker if available
+            userLocation?.let { loc ->
+                Marker(
+                    state = MarkerState(position = loc),
+                    title = "Your Location",
+                    icon = BitmapDescriptorFactory.defaultMarker(180f)
+                )
             }
         }
 
-        // --- 5. FLOATING SEARCH BAR (ATAS) ---
+        // Floating Search + Chips (UI unchanged)
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 48.dp, start = 16.dp, end = 16.dp)
         ) {
-            // Search Input
             Card(
                 shape = RoundedCornerShape(30.dp),
                 elevation = CardDefaults.cardElevation(8.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 16.dp).fillMaxSize()
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .fillMaxSize()
                 ) {
                     Icon(Icons.Default.Search, "Search", tint = TechTextSecondary)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -228,7 +284,6 @@ fun PsychologistMapScreen() {
                 }
             }
 
-            // Filter Chips (Scrollable)
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(listOf("Nearest", "Top Rated", "Open Now", "Specialist")) { filter ->
@@ -237,15 +292,16 @@ fun PsychologistMapScreen() {
             }
         }
 
-        // --- 6. FLOATING INFO CARD (BAWAH) ---
-        // Animasi: Muncul dari bawah saat marker diklik
+        // Info Card & MyLocation FAB (keamanan: gunakan userLocation null check)
+        var selectedPsychologist by remember { mutableStateOf<Psychologist?>(null) }
+
         AnimatedVisibility(
             visible = selectedPsychologist != null,
             enter = slideInVertically { it },
             exit = slideOutVertically { it },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 100.dp) // Padding agar tidak tertutup Navbar
+                .padding(bottom = 100.dp)
                 .padding(horizontal = 16.dp)
         ) {
             selectedPsychologist?.let { psy ->
@@ -253,20 +309,18 @@ fun PsychologistMapScreen() {
                     psy = psy,
                     onClose = { selectedPsychologist = null },
                     onNavigate = {
-                        // Arahkan kamera map ke lokasi dia
                         cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(psy.location, 16f))
                     }
                 )
             }
         }
 
-        // Tombol "My Location" (Floating)
         FloatingActionButton(
             onClick = {
-                userLocation?.let { location ->
-                    cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(location, 15f))
+                userLocation?.let {
+                    cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(it, 15f))
                 } ?: run {
-                    Toast.makeText(context, "Location not ready", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Location not ready. Try again or enable GPS.", Toast.LENGTH_SHORT).show()
                 }
             },
             containerColor = Color.White,
@@ -278,11 +332,10 @@ fun PsychologistMapScreen() {
         ) {
             Icon(Icons.Default.MyLocation, contentDescription = "My Location")
         }
-        }
     }
+}
 
-// --- KOMPONEN UI ---
-
+// FilterChipItem & PsychologistDetailCard tetap sama (salin dari kode kamu)
 @Composable
 fun FilterChipItem(text: String) {
     Surface(
@@ -309,7 +362,6 @@ fun PsychologistDetailCard(psy: Psychologist, onClose: () -> Unit, onNavigate: (
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Baris Atas: Gambar + Info
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(
                     model = psy.imageUrl,
@@ -345,7 +397,6 @@ fun PsychologistDetailCard(psy: Psychologist, onClose: () -> Unit, onNavigate: (
             Divider(color = Color.LightGray.copy(0.3f))
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Alamat
             Row(verticalAlignment = Alignment.Top) {
                 Icon(Icons.Outlined.LocationOn, null, tint = TechPrimary, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
@@ -354,7 +405,6 @@ fun PsychologistDetailCard(psy: Psychologist, onClose: () -> Unit, onNavigate: (
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Tombol Aksi
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = { /* TODO: Call Intent */ },
@@ -367,7 +417,7 @@ fun PsychologistDetailCard(psy: Psychologist, onClose: () -> Unit, onNavigate: (
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Button(
-                    onClick = onNavigate, // Zoom in map
+                    onClick = onNavigate,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
                 ) {
