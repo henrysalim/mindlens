@@ -163,5 +163,12 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("io.github.jan-tennert.supabase:auth-kt:3.0.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+
+    implementation("org.pytorch:pytorch_android_lite:1.13.1")
+    implementation("org.pytorch:pytorch_android_torchvision_lite:1.13.1")
+
+
+
 }
 
