@@ -115,7 +115,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         }
     }
 
-    fun saveDiaryEntry(title: String, content: String, mood: String, colorInt: Int) {
+    fun saveDiaryEntry(title: String, content: String, mood: String, colorInt: Int, latitude: Double?, longitude: Double?) {
         if (content.isBlank()) {
             sendEvent(HomeUiEvent.ShowMessage("Isi diary tidak boleh kosong"))
             return
@@ -129,16 +129,31 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
 
                 val now = Date()
 
-                // Format Judul
                 val titleFormatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
                 val autoTitleDate = titleFormatter.format(now)
 
-                // Format Database (UTC)
                 val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
                 isoFormatter.timeZone = TimeZone.getTimeZone("UTC")
                 val timestamp = isoFormatter.format(now)
 
                 val generatedId = UUID.randomUUID().toString()
+
+                // --- LOGIKA LOKASI (PERSEMPIT RADIUS) ---
+
+                // 1. Titik Pusat (UMN)
+                val centerLat = -6.2572
+                val centerLng = 106.6183
+
+                // 2. Offset Kecil (Sekitar 100-200 meter saja)
+                // (Math.random() - 0.5) = -0.5 s/d 0.5
+                // Dikali 0.002 = Pergeseran maks +/- 0.001 derajat (sekitar 110 meter)
+                val spreadFactor = 0.002
+
+                val offsetLat = (Math.random() - 0.5) * spreadFactor
+                val offsetLng = (Math.random() - 0.5) * spreadFactor
+
+                val scatteredLat = centerLat + offsetLat
+                val scatteredLng = centerLng + offsetLng
 
                 val newEntry = DiaryEntry(
                     id = generatedId,
@@ -147,11 +162,14 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
                     content = content,
                     mood = mood,
                     color = colorInt.toLong(),
-                    createdAt = timestamp
+                    createdAt = timestamp,
+                    // KOORDINAT BARU (LEBIH RAPAT)
+                    latitude = scatteredLat,
+                    longitude = scatteredLng
                 )
 
                 repository.createDiaryEntry(newEntry)
-                loadEntries() // Reload data agar grafik terupdate
+                loadEntries()
                 sendEvent(HomeUiEvent.SaveSuccess)
 
             } catch (e: Exception) {
@@ -301,7 +319,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
             avg >= 0.8f -> "Sangat Bahagia! 🤩"
             avg >= 0.6f -> "Cukup Bahagia 🙂"
             avg >= 0.4f -> "Netral / Biasa 😐"
-            avg >= 0.2f -> "Kurang Semangat ☁️"
+            avg >= 0.2f -> "Kurang Semangat ☁"
             else -> "Sedang Sedih 😢"
         }
     }

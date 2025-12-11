@@ -1,7 +1,13 @@
 package com.example.mindlens.screens.main
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -36,6 +42,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner // Import Baru
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle // Import Baru
 import androidx.lifecycle.LifecycleEventObserver // Import Baru
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -47,6 +54,7 @@ import com.example.mindlens.ui.HomeViewModel
 import com.example.mindlens.ui.WeeklyData
 import com.example.mindlens.ui.components.CustomToast
 import com.example.mindlens.viewModel.AuthViewModel
+import com.google.android.gms.location.LocationServices
 
 // --- DATA MODELS UI LOKAL ---
 data class ActivityItem(
@@ -87,8 +95,65 @@ fun HomeScreen(
     authViewModel: AuthViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val fusedLocation = remember {
+        LocationServices.getFusedLocationProviderClient(context)
+    }
     val state by viewModel.uiState.collectAsState()
     val userName = remember { authViewModel.getUserName() }
+
+    /// REQUEST LOCATION
+    var onGrantedCallback by remember { mutableStateOf<((Location) -> Unit)?>(null) }
+    var onDeniedCallback by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                // Pastikan permission memang granted sebelum akses lastLocation
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    fusedLocation.lastLocation.addOnSuccessListener { loc ->
+                        if (loc != null) {
+                            onGrantedCallback?.invoke(loc)
+                        } else {
+                            // fallback request fresh location
+                            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                                1000L
+                            ).setMaxUpdates(1).build()
+
+                            val callback = object : com.google.android.gms.location.LocationCallback() {
+                                override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                                    result.lastLocation?.let { onGrantedCallback?.invoke(it) }
+                                    fusedLocation.removeLocationUpdates(this)
+                                }
+                            }
+
+                            fusedLocation.requestLocationUpdates(locationRequest, callback, null)
+                        }
+                    }
+                } else {
+                    // Safety fallback kalau somehow permission ilang
+                    onDeniedCallback?.invoke()
+                }
+            } else {
+                onDeniedCallback?.invoke()
+            }
+
+            onGrantedCallback = null
+            onDeniedCallback = null
+        }
+
+    fun onRequestSave(
+        onPermissionGranted: (Location) -> Unit,
+        onPermissionDenied: () -> Unit
+    ) {
+        onGrantedCallback = onPermissionGranted
+        onDeniedCallback = onPermissionDenied
+        locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
 
     // --- TAMBAHAN PENTING: REFRESH OTOMATIS SAAT BALIK KE HOME ---
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -105,6 +170,45 @@ fun HomeScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+    // -----------------------------------------------------------
+
+
+    // REQUEST LOCATION
+
+    fun requestLocationOptional(
+        fusedLocation: com.google.android.gms.location.FusedLocationProviderClient,
+        context: Context,
+        onLocation: (Location?) -> Unit
+    ) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocation.lastLocation.addOnSuccessListener { loc ->
+                if (loc != null) {
+                    onLocation(loc)
+                } else {
+                    // fallback ambil lokasi baru
+                    val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                        com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                        1000L
+                    ).setMaxUpdates(1).build()
+
+                    val callback = object : com.google.android.gms.location.LocationCallback() {
+                        override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                            onLocation(result.lastLocation)
+                            fusedLocation.removeLocationUpdates(this)
+                        }
+                    }
+                    fusedLocation.requestLocationUpdates(locationRequest, callback, null)
+                }
+            }
+        } else {
+            // permission belum granted, kembalikan null
+            onLocation(null)
+        }
+    }
+
+
     // -----------------------------------------------------------
 
     // State Input Lokal
@@ -225,12 +329,24 @@ fun HomeScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            viewModel.saveDiaryEntry(
-                                title = diaryTitleText,
-                                content = diaryInputText,
-                                mood = selectedMoodForEntry.ifEmpty { "Neutral" },
-                                colorInt = selectedColorForEntry.toArgb()
-                            )
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                                == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                // ambil lokasi & save
+                                requestLocationOptional(fusedLocation, context) { location ->
+                                    viewModel.saveDiaryEntry(
+                                        title = diaryTitleText,
+                                        content = diaryInputText,
+                                        mood = selectedMoodForEntry.ifEmpty { "Neutral" },
+                                        colorInt = selectedColorForEntry.toArgb(),
+                                        latitude = location?.latitude,
+                                        longitude = location?.longitude
+                                    )
+                                }
+                            } else {
+                                // request permission dulu
+                                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
                     ) { Text("Save") }
