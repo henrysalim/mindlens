@@ -9,6 +9,17 @@ plugins {
 }
 
 android {
+
+    // Load properties
+    val props = Properties().apply {
+        val file = rootProject.file("local.properties")
+        if (file.exists()) {
+            load(file.inputStream())
+        }
+    }
+
+    val mapsApiKey = props.getProperty("MAPS_API_KEY") ?: ""
+
     namespace = "com.example.mindlens"
     compileSdk = 36
 
@@ -47,6 +58,9 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseKey\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
     }
 
     buildTypes {
@@ -89,6 +103,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -135,6 +150,9 @@ dependencies {
     // Google Maps Compose
     implementation("com.google.maps.android:maps-compose:6.12.0")
 
+    // buat google maps biar ga ngebug
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+
     // CameraX (For your ML Feature)
     val cameraxVersion = "1.5.1"
     implementation("androidx.camera:camera-core:$cameraxVersion")
@@ -155,6 +173,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:18.2.0")
 
     implementation("org.osmdroid:osmdroid-android:6.1.18")
+
+    // PLACES API
+    implementation("com.google.android.libraries.places:places:3.4.0")
 
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.9.0")

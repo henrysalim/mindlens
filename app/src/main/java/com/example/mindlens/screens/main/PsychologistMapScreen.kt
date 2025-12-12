@@ -1,5 +1,11 @@
 package com.example.mindlens.screens.main
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -19,22 +25,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mindlens.ui.HomeViewModel
 import coil.compose.AsyncImage
+import com.example.mindlens.BuildConfig
 import com.example.mindlens.ui.*
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import java.util.Calendar
+import kotlin.coroutines.EmptyCoroutineContext.get
 
-// --- 1. DATA MODEL PSIKOLOG ---
+// -----------------------------
+// Model & Dummy Data (tidak berubah)
+// -----------------------------
 data class Psychologist(
     val id: String,
     val name: String,
     val specialty: String,
-    val location: LatLng, // Koordinat Google Maps
+    val location: LatLng,
     val rating: Double,
     val distance: String,
     val isOpen: Boolean,
@@ -42,126 +66,290 @@ data class Psychologist(
     val address: String
 )
 
-// --- 2. DUMMY DATA (Disebar di sekitar Monas Jakarta biar kelihatan) ---
-val jakartaCenter = LatLng(-6.175392, 106.827153) // Monas
+val jakartaCenter = LatLng(-6.175392, 106.827153)
 
-val psychologists = listOf(
-    Psychologist("1", "Dr. Sarah Wijaya", "Clinical Psychologist", LatLng(-6.175, 106.823), 4.8, "0.5 km", true, "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=200", "Jl. Merdeka Barat No. 12"),
-    Psychologist("2", "Dr. Budi Santoso", "Psychiatrist", LatLng(-6.178, 106.829), 4.5, "1.2 km", true, "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=200", "Jl. Kebon Sirih No. 45"),
-    Psychologist("3", "MindCare Center", "Counseling", LatLng(-6.171, 106.826), 4.9, "0.8 km", false, "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200", "Jl. Majapahit No. 88"),
-    Psychologist("4", "Amanda Putri, M.Psi", "Child Therapist", LatLng(-6.174, 106.832), 4.7, "1.5 km", true, "https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=200", "Jl. Medan Merdeka Timur")
-)
+// -----------------------------
+// Helper: getAccurateLocation (suspend)
+// -----------------------------
+private suspend fun getAccurateLocation(
+    context: Context,
+    fused: FusedLocationProviderClient
+): LatLng? {
+    if (context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+        PackageManager.PERMISSION_GRANTED
+    ) return null
 
+    return try {
+        // Recommended: getCurrentLocation for a fresh location
+        val loc = fused.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
+        loc?.let { LatLng(it.latitude, it.longitude) }
+    } catch (e: SecurityException) {
+        Log.e("Location", "SecurityException in getAccurateLocation: ${e.message}", e)
+        null
+    } catch (e: Exception) {
+        Log.e("Location", "Error getAccurateLocation: ${e.message}", e)
+        null
+    }
+}
+
+// -----------------------------
+// Main Composable: PsychologistMapScreen (safe version)
+// -----------------------------
 @Composable
-fun PsychologistMapScreen() {
-    // State Kamera Map (Start di Jakarta)
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(jakartaCenter, 14f)
+fun PsychologistMapScreen(viewModel: HomeViewModel) {
+    val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+    var nearbyPsychologists by remember { mutableStateOf<List<Psychologist>>(emptyList()) }
+    var userLocation by remember { mutableStateOf<LatLng?>(null) }
+    var isFetchingPlaces by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
+
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            // langsung fetch lokasi yang akurat
+            scope.launch {
+                userLocation = getAccurateLocation(context, fusedLocationClient)
+                if (userLocation == null) {
+                    Toast.makeText(context, "Gagal mendapatkan lokasi. Pastikan GPS ON.", Toast.LENGTH_LONG).show()
+                }
+            }
+        } else {
+            Toast.makeText(context, "Location permission denied.", Toast.LENGTH_LONG).show()
+        }
     }
 
-    // State untuk Psikolog yang dipilih (diklik markernya)
-    var selectedPsychologist by remember { mutableStateOf<Psychologist?>(null) }
+    val hasLocationPermission by remember {
+        mutableStateOf(
+            context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED
+        )
+    }
 
+
+    // camera state
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(jakartaCenter, 13f)
+    }
+
+    // Launch on first composition: request permission if needed, else fetch
+    LaunchedEffect(Unit) {
+        if (context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            userLocation = getAccurateLocation(context, fusedLocationClient)
+        } else {
+            // request permission (this will call the launcher lambda)
+            permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    // animate camera when userLocation available
+    LaunchedEffect(userLocation) {
+        userLocation?.let {
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(it, 15f))
+        }
+    }
+
+    // Fetch nearby places when userLocation available
+    LaunchedEffect(userLocation) {
+        val location = userLocation ?: return@LaunchedEffect
+        // avoid double fetch
+        if (isFetchingPlaces) return@LaunchedEffect
+        isFetchingPlaces = true
+
+        scope.launch {
+            try {
+                val url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
+                        "?location=${location.latitude},${location.longitude}" +
+                        "&radius=3000" +
+                        "&keyword=psychologist" +
+                        "&key=${BuildConfig.MAPS_API_KEY}"
+
+                val client = OkHttpClient()
+                val request = Request.Builder().url(url).build()
+
+                val body = withContext(Dispatchers.IO) {
+                    val response = client.newCall(request).execute()
+                    response.body?.string()
+                }
+
+                if (!body.isNullOrEmpty()) {
+                    val json = JSONObject(body)
+                    val results = json.optJSONArray("results")
+                    val tempList = mutableListOf<Psychologist>()
+                    if (results != null) {
+                        for (i in 0 until results.length()) {
+                            val place = results.getJSONObject(i)
+                            val loc = place.getJSONObject("geometry").getJSONObject("location")
+                            val lat = loc.getDouble("lat")
+                            val lng = loc.getDouble("lng")
+
+                            tempList.add(
+                                Psychologist(
+                                    id = place.optString("place_id", i.toString()),
+                                    name = place.optString("name", "Unknown"),
+                                    specialty = "Psychologist",
+                                    location = LatLng(lat, lng),
+                                    rating = place.optDouble("rating", 0.0),
+                                    distance = "",
+                                    isOpen = place.optJSONObject("opening_hours")?.optBoolean("open_now") ?: false,
+                                    imageUrl = place.optJSONArray("photos")?.optJSONObject(0)?.optString("photo_reference") ?: "",
+                                    address = place.optString("vicinity", "")
+                                )
+                            )
+                        }
+                    }
+                    nearbyPsychologists = tempList
+                }
+            } catch (e: Exception) {
+                Log.e("PlacesFetch", "Failed to fetch nearby places: ${e.message}", e)
+            } finally {
+                isFetchingPlaces = false
+            }
+        }
+    }
+
+
+    // Filter Data 7 Hari Terakhir
+    val recentDiaries = remember(state.entries) {
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DAY_OF_YEAR, -7)
+        state.entries.filter { entry ->
+            (entry.latitude != null && entry.latitude != 0.0) &&
+                    (entry.longitude != null && entry.longitude != 0.0)
+        }
+    }
+
+    // --- HITUNG STATISTIK 5 KATEGORI ---
+    val moodCounts = remember(recentDiaries) {
+        mapOf(
+            "Great" to recentDiaries.count { it.mood.lowercase() in listOf("great", "amazing", "bahagia") },
+            "Good" to recentDiaries.count { it.mood.lowercase() in listOf("good", "senang") },
+            "Neutral" to recentDiaries.count { it.mood.lowercase() in listOf("okay", "neutral", "biasa") },
+            "Bad" to recentDiaries.count { it.mood.lowercase() in listOf("bad", "buruk") },
+            "Awful" to recentDiaries.count { it.mood.lowercase() in listOf("awful", "terrible", "sedih") }
+        )
+    }
+
+    // UI
     Box(modifier = Modifier.fillMaxSize()) {
+        // MapProperties: only enable my-location if we have permission
+        val mapProperties = MapProperties(
+            isMyLocationEnabled = context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        )
+        val uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false)
 
-        // --- 3. GOOGLE MAPS ---
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
-            uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false) // UI Bersih
+            properties = mapProperties,
+            uiSettings = uiSettings
         ) {
-            // Render Marker untuk setiap Psikolog
-            psychologists.forEach { psy ->
-                Marker(
-                    state = MarkerState(position = psy.location),
-                    title = psy.name,
-                    snippet = psy.specialty,
-                    onClick = {
-                        selectedPsychologist = psy // Simpan data yang diklik
-                        false // Return false agar default behavior (center camera) tetap jalan
-                    },
-                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(
-                        if (selectedPsychologist == psy) 120f else 200f // Ganti warna marker jika dipilih (Hue)
+            recentDiaries.forEach { diary ->
+                if (diary.latitude != null && diary.longitude != null) {
+                    val position = LatLng(diary.latitude, diary.longitude)
+                    val (hue, emoji) = getMoodAttributes(diary.mood)
+
+                    Marker(
+                        state = MarkerState(position = position),
+                        title = "$emoji ${diary.mood}",
+                        snippet = diary.title,
+                        icon = BitmapDescriptorFactory.defaultMarker(hue)
                     )
+                }
+            }
+
+            // user location marker if available
+            userLocation?.let { loc ->
+                Marker(
+                    state = MarkerState(position = loc),
+                    title = "Your Location",
+                    icon = BitmapDescriptorFactory.defaultMarker(180f)
                 )
             }
         }
 
-        // --- 4. FLOATING SEARCH BAR (ATAS) ---
-        Column(
+        // --- KARTU STATISTIK (DENGAN 5 KATEGORI) ---
+        Card(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 48.dp, start = 16.dp, end = 16.dp)
+                .padding(top = 50.dp, start = 16.dp, end = 16.dp)
+                .align(Alignment.TopCenter),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(6.dp)
         ) {
-            // Search Input
-            Card(
-                shape = RoundedCornerShape(30.dp),
-                elevation = CardDefaults.cardElevation(8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 16.dp).fillMaxSize()
+                Text("Emotional Journey Map", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TechTextPrimary)
+                Text("Jejak perasaanmu 7 hari terakhir", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Scrollable Row agar muat 5 item
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    Icon(Icons.Default.Search, "Search", tint = TechTextSecondary)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Search psychologist...", color = TechTextSecondary, modifier = Modifier.weight(1f))
-                    Icon(Icons.Default.Mic, "Voice", tint = TechPrimary)
-                }
-            }
-
-            // Filter Chips (Scrollable)
-            Spacer(modifier = Modifier.height(12.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf("Nearest", "Top Rated", "Open Now", "Specialist")) { filter ->
-                    FilterChipItem(filter)
+                    item { StatItem(Color(0xFF64B5F6), "Great", moodCounts["Great"] ?: 0) } // Biru
+                    item { StatItem(Color(0xFFAED581), "Good", moodCounts["Good"] ?: 0) }   // Hijau
+                    item { StatItem(Color(0xFFFFF176), "Okay", moodCounts["Neutral"] ?: 0) } // Kuning
+                    item { StatItem(Color(0xFFFFB74D), "Bad", moodCounts["Bad"] ?: 0) }     // Oranye
+                    item { StatItem(Color(0xFFE57373), "Awful", moodCounts["Awful"] ?: 0) } // Merah
                 }
             }
         }
 
-        // --- 5. FLOATING INFO CARD (BAWAH) ---
-        // Animasi: Muncul dari bawah saat marker diklik
-        AnimatedVisibility(
-            visible = selectedPsychologist != null,
-            enter = slideInVertically { it },
-            exit = slideOutVertically { it },
+        FloatingActionButton(
+            onClick = {
+                userLocation?.let {
+                    cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(it, 15f))
+                } ?: run {
+                    Toast.makeText(context, "Location not ready. Try again or enable GPS.", Toast.LENGTH_SHORT).show()
+                }
+            },
+            containerColor = Color.White,
+            contentColor = TechPrimary,
+            shape = CircleShape,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 100.dp) // Padding agar tidak tertutup Navbar
-                .padding(horizontal = 16.dp)
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 110.dp, end = 16.dp)
         ) {
-            selectedPsychologist?.let { psy ->
-                PsychologistDetailCard(
-                    psy = psy,
-                    onClose = { selectedPsychologist = null },
-                    onNavigate = {
-                        // Arahkan kamera map ke lokasi dia
-                        cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(psy.location, 16f))
-                    }
-                )
-            }
-        }
-
-        // Tombol "My Location" (Floating)
-        if (selectedPsychologist == null) {
-            FloatingActionButton(
-                onClick = { cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(jakartaCenter, 14f)) },
-                containerColor = Color.White,
-                contentColor = TechPrimary,
-                shape = CircleShape,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = 110.dp, end = 16.dp)
-            ) {
-                Icon(Icons.Default.MyLocation, contentDescription = "My Location")
-            }
+            Icon(Icons.Default.MyLocation, contentDescription = "My Location")
         }
     }
 }
 
-// --- KOMPONEN UI ---
+// --- KOMPONEN PENDUKUNG ---
+@Composable
+fun StatItem(color: Color, label: String, count: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        }
+        Text("$count", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TechTextPrimary)
+    }
+}
 
+fun getMoodAttributes(mood: String): Pair<Float, String> {
+    return when (mood.lowercase()) {
+        "great", "amazing", "bahagia" -> Pair(BitmapDescriptorFactory.HUE_AZURE, "🤩") // Biru Langit
+        "good", "senang" -> Pair(BitmapDescriptorFactory.HUE_GREEN, "🙂") // Hijau
+        "neutral", "okay", "biasa" -> Pair(BitmapDescriptorFactory.HUE_YELLOW, "😐") // Kuning
+        "bad", "buruk" -> Pair(BitmapDescriptorFactory.HUE_ORANGE, "😣") // Oranye
+        "awful", "terrible", "sedih" -> Pair(BitmapDescriptorFactory.HUE_RED, "😭") // Merah
+        else -> Pair(BitmapDescriptorFactory.HUE_VIOLET, "📍")
+    }
+}
+// FilterChipItem & PsychologistDetailCard tetap sama (salin dari kode kamu)
 @Composable
 fun FilterChipItem(text: String) {
     Surface(
@@ -188,7 +376,6 @@ fun PsychologistDetailCard(psy: Psychologist, onClose: () -> Unit, onNavigate: (
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Baris Atas: Gambar + Info
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(
                     model = psy.imageUrl,
@@ -224,7 +411,6 @@ fun PsychologistDetailCard(psy: Psychologist, onClose: () -> Unit, onNavigate: (
             Divider(color = Color.LightGray.copy(0.3f))
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Alamat
             Row(verticalAlignment = Alignment.Top) {
                 Icon(Icons.Outlined.LocationOn, null, tint = TechPrimary, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
@@ -233,7 +419,6 @@ fun PsychologistDetailCard(psy: Psychologist, onClose: () -> Unit, onNavigate: (
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Tombol Aksi
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = { /* TODO: Call Intent */ },
@@ -246,7 +431,7 @@ fun PsychologistDetailCard(psy: Psychologist, onClose: () -> Unit, onNavigate: (
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Button(
-                    onClick = onNavigate, // Zoom in map
+                    onClick = onNavigate,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
                 ) {
