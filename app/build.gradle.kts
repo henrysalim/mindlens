@@ -41,6 +41,8 @@ android {
         localProperties.getProperty("WEB_GOOGLE_CLIENT_ID") ?: error("WEB_GOOGLE_CLIENT_ID not found in local.properties")
     val androidGoogleClientID: String =
         localProperties.getProperty("ANDROID_GOOGLE_CLIENT_ID") ?: error("ANDROID_GOOGLE_CLIENT_ID not found in local.properties")
+    val googleMapsApiKey: String =
+        localProperties.getProperty("MAPS_API_KEY") ?: error("MAPS_API_KEY not found in local.properties")
 
     buildFeatures {
         viewBinding = true
@@ -72,6 +74,7 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
             buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
             buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
+            buildConfigField("String", "MAPS_API_KEY", "$googleMapsApiKey")
         }
         debug {
             buildConfigField("String", "SUPABASE_URL", "$supabaseUrl")
@@ -79,7 +82,7 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
             buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
             buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
-
+            buildConfigField("String", "MAPS_API_KEY", "$googleMapsApiKey")
         }
     }
     compileOptions {
