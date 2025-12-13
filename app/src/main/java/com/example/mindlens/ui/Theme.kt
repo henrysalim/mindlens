@@ -58,11 +58,9 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun DailyDiaryTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // UBAH KE FALSE: Agar warna aplikasi konsisten sesuai Figma (Hijau/Hitam)
-    // Jika true, warna akan mengikuti wallpaper HP user (biasanya pastel/coklat/biru)
+    darkTheme: Boolean = false, // agar tema selalu terang sekalipun user gunakan light theme mode
     dynamicColor: Boolean = false,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
