@@ -11,7 +11,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.mindlens.screens.auth.NativeLoginScreen
 import com.example.mindlens.screens.auth.RegisterOptionsScreen
-import com.example.mindlens.screens.main.MainScreen
+import com.example.mindlens.screens.MainScreen
 import com.example.mindlens.screens.splash.OnboardingScreen
 import com.example.mindlens.screens.splash.SplashScreen
 import com.example.mindlens.ui.DailyDiaryTheme

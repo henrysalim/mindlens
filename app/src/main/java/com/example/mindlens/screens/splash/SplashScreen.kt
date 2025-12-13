@@ -13,8 +13,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
 import com.example.mindlens.Routes
-import com.example.mindlens.viewModel.AuthState
-import com.example.mindlens.viewModel.AuthViewModel
+import com.example.mindlens.viewModels.AuthState
+import com.example.mindlens.viewModels.AuthViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
