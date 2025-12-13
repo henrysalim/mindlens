@@ -28,10 +28,10 @@ import com.example.mindlens.screens.depressionClassifier.DepressionClassifierScr
 import com.example.mindlens.screens.home.ActivityDetailScreen
 import com.example.mindlens.screens.home.BreathingScreen
 import com.example.mindlens.screens.home.DiaryDetailScreen
-import com.example.mindlens.screens.home.HomeScreen
 import com.example.mindlens.screens.home.MoodScreen
 import com.example.mindlens.screens.map.PsychologistMapScreen
 import com.example.mindlens.screens.home.VideoPlayerScreen
+import com.example.mindlens.screens.main.HomeScreen
 import com.example.mindlens.screens.profile.*
 import com.example.mindlens.screens.profile.subprofile.AboutAppScreen
 import com.example.mindlens.screens.profile.subprofile.TermsConditionsScreen

@@ -4,11 +4,9 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
-import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,14 +44,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle // Import Baru
 import androidx.lifecycle.LifecycleEventObserver // Import Baru
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mindlens.data.DiaryEntry
 import com.example.mindlens.helpers.formatDiaryDate
+import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.ui.*
-import com.example.mindlens.ui.HomeUiEvent
-import com.example.mindlens.ui.HomeViewModel
-import com.example.mindlens.ui.WeeklyData
 import com.example.mindlens.ui.components.CustomToast
-import com.example.mindlens.viewModel.AuthViewModel
+import com.example.mindlens.viewModels.AuthViewModel
+import com.example.mindlens.viewModels.HomeUiEvent
+import com.example.mindlens.viewModels.HomeViewModel
+import com.example.mindlens.viewModels.WeeklyData
 import com.google.android.gms.location.LocationServices
 
 // --- DATA MODELS UI LOKAL ---

@@ -26,12 +26,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.mindlens.screens.home.HomeScanItem
+import com.example.mindlens.screens.main.HomeScanItem
 import com.example.mindlens.ui.TechPrimary
 import com.example.mindlens.ui.TechSurface
 import com.example.mindlens.ui.TechTextPrimary
 import com.example.mindlens.ui.TechTextSecondary
-import kotlin.collections.forEach
 
 @Composable
 fun RecentScansHomeSection(scans: List<HomeScanItem>, onScanClick: () -> Unit = {}) {
