@@ -20,6 +20,10 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
+import kotlin.math.PI
 
 // --- DATA CLASS PENDUKUNG ---
 
@@ -138,22 +142,32 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
 
                 val generatedId = UUID.randomUUID().toString()
 
-                // --- LOGIKA LOKASI (PERSEMPIT RADIUS) ---
+                // --- RANDOMIZER LOKASI (PERSEMPIT RADIUS) ---
+                fun randomizeLocation(
+                    lat: Double,
+                    lng: Double,
+                    radiusMeters: Double
+                ): Pair<Double, Double> {
 
-                // 1. Titik Pusat (UMN)
-                val centerLat = -6.2572
-                val centerLng = 106.6183
+                    val radiusInDegrees = radiusMeters / 111_320.0
+                    val u = Math.random()
+                    val v = Math.random()
 
-                // 2. Offset Kecil (Sekitar 100-200 meter saja)
-                // (Math.random() - 0.5) = -0.5 s/d 0.5
-                // Dikali 0.002 = Pergeseran maks +/- 0.001 derajat (sekitar 110 meter)
-                val spreadFactor = 0.002
+                    val w = radiusInDegrees * sqrt(u)
+                    val t = 2 * PI * v
 
-                val offsetLat = (Math.random() - 0.5) * spreadFactor
-                val offsetLng = (Math.random() - 0.5) * spreadFactor
+                    val deltaLat = w * cos(t)
+                    val deltaLng = w * sin(t) / cos(Math.toRadians(lat))
 
-                val scatteredLat = centerLat + offsetLat
-                val scatteredLng = centerLng + offsetLng
+                    return Pair(lat + deltaLat, lng + deltaLng)
+                }
+
+                val (finalLat, finalLng) =
+                    if (latitude != null && longitude != null) {
+                        randomizeLocation(latitude, longitude, radiusMeters = 50.0)
+                    } else {
+                        null to null
+                    }
 
                 val newEntry = DiaryEntry(
                     id = generatedId,
@@ -163,9 +177,8 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
                     mood = mood,
                     color = colorInt.toLong(),
                     createdAt = timestamp,
-                    // KOORDINAT BARU (LEBIH RAPAT)
-                    latitude = scatteredLat,
-                    longitude = scatteredLng
+                    latitude = finalLat,
+                    longitude = finalLng
                 )
 
                 repository.createDiaryEntry(newEntry)
