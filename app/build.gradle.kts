@@ -74,7 +74,7 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
             buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
             buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
-            buildConfigField("String", "MAPS_API_KEY", "$googleMapsApiKey")
+            buildConfigField("String", "MAPS_API_KEY", "\"$googleMapsApiKey\"")
         }
         debug {
             buildConfigField("String", "SUPABASE_URL", "$supabaseUrl")
@@ -82,7 +82,7 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
             buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
             buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
-            buildConfigField("String", "MAPS_API_KEY", "$googleMapsApiKey")
+            buildConfigField("String", "MAPS_API_KEY", "\"$googleMapsApiKey\"")
         }
     }
     compileOptions {
