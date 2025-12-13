@@ -344,8 +344,15 @@ fun HomeScreen(
                                     )
                                 }
                             } else {
-                                // request permission dulu
-                                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                                // 🔥 SAVE TANPA LOKASI
+                                viewModel.saveDiaryEntry(
+                                    title = diaryTitleText,
+                                    content = diaryInputText,
+                                    mood = selectedMoodForEntry.ifEmpty { "Neutral" },
+                                    colorInt = selectedColorForEntry.toArgb(),
+                                    latitude = null,
+                                    longitude = null
+                                )
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
