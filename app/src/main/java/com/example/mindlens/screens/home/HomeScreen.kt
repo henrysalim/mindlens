@@ -36,7 +36,6 @@ import com.example.mindlens.ui.components.home.HomeHeader
 import com.example.mindlens.ui.components.home.MoodCheckInSection
 import com.example.mindlens.ui.components.home.RecentHistorySection
 import com.example.mindlens.ui.components.home.RecentScansHomeSection
-import com.example.mindlens.ui.components.home.RecommendedReadsSection
 import com.example.mindlens.ui.components.home.WeeklyChartSection
 import com.example.mindlens.viewModels.AuthViewModel
 import com.example.mindlens.viewModels.HomeUiEvent
@@ -48,6 +47,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 
+// TODO: perlu diganti dengan data riil
 val dummyHomeScans = listOf(
     HomeScanItem("Normal / Sehat", "Hari ini, 08:30", 92, false),
     HomeScanItem("Indikasi Stress", "Kemarin, 20:15", 74, true)
@@ -69,60 +69,24 @@ fun HomeScreen(
     val fusedLocation = remember {
         LocationServices.getFusedLocationProviderClient(context)
     }
+
     val state by viewModel.uiState.collectAsState()
     val userName = remember { authViewModel.getUserName() }
 
-    /// REQUEST LOCATION
-    var onGrantedCallback by remember { mutableStateOf<((Location) -> Unit)?>(null) }
-    var onDeniedCallback by remember { mutableStateOf<(() -> Unit)?>(null) }
-
-    val locationPermissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                // Pastikan permission memang granted sebelum akses lastLocation
-                if (ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
-                    fusedLocation.lastLocation.addOnSuccessListener { loc ->
-                        if (loc != null) {
-                            onGrantedCallback?.invoke(loc)
-                        } else {
-                            // fallback request fresh location
-                            val locationRequest = LocationRequest.Builder(
-                                Priority.PRIORITY_HIGH_ACCURACY,
-                                1000L
-                            ).setMaxUpdates(1).build()
-
-                            val callback = object : LocationCallback() {
-                                override fun onLocationResult(result: LocationResult) {
-                                    result.lastLocation?.let { onGrantedCallback?.invoke(it) }
-                                    fusedLocation.removeLocationUpdates(this)
-                                }
-                            }
-
-                            fusedLocation.requestLocationUpdates(locationRequest, callback, null)
-                        }
-                    }
-                } else {
-                    // Safety fallback kalau somehow permission ilang
-                    onDeniedCallback?.invoke()
-                }
-            } else {
-                onDeniedCallback?.invoke()
-            }
-
-            onGrantedCallback = null
-        }
+    // Local input state
+    var showDiaryDialog by remember { mutableStateOf(false) }
+    var selectedMoodForEntry by remember { mutableStateOf("") }
+    var selectedColorForEntry by remember { mutableStateOf(Color.Gray) }
+    var diaryTitleText by remember { mutableStateOf("") }
+    var diaryInputText by remember { mutableStateOf("") }
+    var showSuccessToast by remember { mutableStateOf(false) }
 
     // Auto refresh
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                // Setiap kali layar ini muncul (termasuk saat tombol Back ditekan),
-                // kita paksa muat ulang data dari database
+                // reload data from database every time this page opened (better use caching if possible...but don't have any time -> for next developer 🔥)
                 viewModel.loadEntries()
             }
         }
@@ -132,7 +96,7 @@ fun HomeScreen(
         }
     }
 
-    // REQUEST LOCATION
+    // Request location
     fun requestLocationOptional(
         fusedLocation: FusedLocationProviderClient,
         context: Context,
@@ -145,7 +109,6 @@ fun HomeScreen(
                 if (loc != null) {
                     onLocation(loc)
                 } else {
-                    // fallback ambil lokasi baru
                     val locationRequest = LocationRequest.Builder(
                         Priority.PRIORITY_HIGH_ACCURACY,
                         1000L
@@ -161,18 +124,10 @@ fun HomeScreen(
                 }
             }
         } else {
-            // permission belum granted, kembalikan null
+            // return null if permission not granted
             onLocation(null)
         }
     }
-
-    // State Input Lokal
-    var showDiaryDialog by remember { mutableStateOf(false) }
-    var selectedMoodForEntry by remember { mutableStateOf("") }
-    var selectedColorForEntry by remember { mutableStateOf(Color.Gray) }
-    var diaryTitleText by remember { mutableStateOf("") }
-    var diaryInputText by remember { mutableStateOf("") }
-    var showSuccessToast by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
@@ -199,8 +154,10 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 100.dp)
         ) {
+            // header
             HomeHeader(onPanicClick = onNavigateToPanic, username = userName)
 
+            // to submit diary
             MoodCheckInSection(
                 onMoodSelected = { mood, color ->
                     selectedMoodForEntry = mood
@@ -209,12 +166,13 @@ fun HomeScreen(
                 }
             )
 
-            // CHART & TEXT INDIKASI
+            // Mood Chart
             WeeklyChartSection(
                 weeklyData = state.weeklyStats,
-                averageMoodStatus = state.averageMood // Menampilkan status mood terbaru
+                averageMoodStatus = state.averageMood
             )
 
+            // displaying recent scan
             RecentScansHomeSection(
                 scans = dummyHomeScans,
                 onScanClick = onNavigateToScan
@@ -222,13 +180,14 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // exercises
             DailyPhysioSection(
                 onItemClick = { type ->
                     if (type == "Breathing") onNavigateToBreathing() else onNavigateToActivity(type)
                 }
             )
 
-            // LIST HISTORY TERBARU
+            // Recent diary
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = TechPrimary)
@@ -240,10 +199,9 @@ fun HomeScreen(
                     onItemClick = { entry -> onNavigateToDetail(entry) }
                 )
             }
-            RecommendedReadsSection()
         }
 
-        // --- DIALOG INPUT DIARY ---
+        // Input diary dialogue
         if (showDiaryDialog) {
             AlertDialog(
                 onDismissRequest = { showDiaryDialog = false },
@@ -287,7 +245,7 @@ fun HomeScreen(
                             if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
                                 == PackageManager.PERMISSION_GRANTED
                             ) {
-                                // ambil lokasi & save
+                                // get location & save
                                 requestLocationOptional(fusedLocation, context) { location ->
                                     viewModel.saveDiaryEntry(
                                         title = diaryTitleText,
@@ -309,7 +267,7 @@ fun HomeScreen(
                                 )
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
+                        colors = ButtonDefaults.buttonColors(containerColor = TechPrimary, contentColor = Color.White)
                     ) { Text("Save") }
                 },
                 dismissButton = {
@@ -318,6 +276,7 @@ fun HomeScreen(
             )
         }
 
+        // toast to display messages
         CustomToast(
             visible = showSuccessToast,
             message = "Diary saved & Analytics updated!",

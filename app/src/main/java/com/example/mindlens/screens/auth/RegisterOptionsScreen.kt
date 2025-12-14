@@ -29,7 +29,6 @@ import kotlinx.coroutines.launch
 
 val TextGray = Color(0xFF888888)
 val BorderGray = Color(0xFFEEEEEE)
-val InputBg = Color(0xFFFAFAFA) // Very light gray for inputs if needed, or White
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,19 +39,18 @@ fun RegisterOptionsScreen(
     val authState by viewModel.authState.collectAsState()
     val scope = rememberCoroutineScope()
 
-    // --- Toast States ---
+    // Toast States
     var showToast by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("") }
     var isToastError by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // --- Input States ---
+    // Input States
     var email by remember { mutableStateOf("") }
     var fullName by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
-    // 2. REACTIVE NAVIGATION
     // As soon as the ViewModel says "Authenticated", this block runs and moves to Home
     LaunchedEffect(authState) {
         if (authState is AuthState.Authenticated) {
@@ -70,6 +68,7 @@ fun RegisterOptionsScreen(
 
     Scaffold(
         topBar = {
+            // top bar
             CenterAlignedTopAppBar(
                 title = {
                     Text(
@@ -170,7 +169,7 @@ fun RegisterOptionsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 4. Google Button (Replaces "Already have account")
+            // 4. Google Button
             SocialButton(
                 text = "Continue with Google",
                 iconRes = R.drawable.ic_google,
@@ -179,7 +178,7 @@ fun RegisterOptionsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 5. Continue Button (Primary)
+            // 5. Submit button
             Button(
                 onClick = {
                     isLoading = true
@@ -203,7 +202,7 @@ fun RegisterOptionsScreen(
                             pass = password,
                             fullName = fullName,
                             onSuccess = {
-                                // SUCCESS: Redirect to Native Login Screen
+                                // Redirect to Native Login Screen if success
                                 toastMessage = "Registration Successful! Redirecting..."
                                 isToastError = false
                                 showToast = true
@@ -217,7 +216,7 @@ fun RegisterOptionsScreen(
                                 }
                             },
                             onError = { errorMessage ->
-                                // ERROR: Show Custom Red Toast
+                                // If error: Show Custom Red Toast
                                 toastMessage = errorMessage
                                 isToastError = true
                                 showToast = true
@@ -237,14 +236,17 @@ fun RegisterOptionsScreen(
                 enabled = if(isLoading) false else true,
             ) {
                 if (isLoading) {
+                    // displya circular indicator if still loading
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Sign Up")
+                    // display text if not in loading state
+                    Text("Log In")
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // move to login page button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -274,8 +276,7 @@ fun RegisterOptionsScreen(
                 }
             }
 
-            // --- CUSTOM TOAST OVERLAY ---
-            // This sits on top of the screen (z-index)
+            // toast to display messages
             CustomToast(
                 visible = showToast,
                 message = toastMessage,

@@ -48,6 +48,7 @@ fun ArticleItem(article: Article, onClick: () -> Unit) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(article.image)
+                    // debugging
                     .listener(
                         onStart = { Log.d("DEBUG_IMAGE", "Mulai loading: ${article.image}") },
                         onSuccess = { _, _ -> Log.d("DEBUG_IMAGE", "Sukses load gambar!") },
@@ -77,7 +78,7 @@ fun ArticleItem(article: Article, onClick: () -> Unit) {
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Badge Sumber Berita
+                    // News source
                     Surface(
                         color = TechPrimary.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(4.dp)
@@ -90,8 +91,10 @@ fun ArticleItem(article: Article, onClick: () -> Unit) {
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                         )
                     }
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    // Tanggal
+
+                    // Date
                     Text(
                         text = if (article.publishedAt.length >= 10) article.publishedAt.take(10) else article.publishedAt,
                         style = MaterialTheme.typography.labelSmall,

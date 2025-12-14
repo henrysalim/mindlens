@@ -2,10 +2,10 @@ package com.example.mindlens.model
 
 import android.os.Parcelable
 import com.example.mindlens.data.Source
-import com.google.gson.annotations.SerializedName // Pastikan import ini ada
+import com.google.gson.annotations.SerializedName
 import kotlinx.parcelize.Parcelize
 
-
+// representing articles object
 @Parcelize
 data class Article(
     val title: String,

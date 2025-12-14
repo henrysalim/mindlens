@@ -22,6 +22,7 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstan
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,7 +35,7 @@ fun VideoPlayerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // State untuk mendeteksi error player
+    // State for detecting video player error
     var isPlayerError by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -57,7 +58,7 @@ fun VideoPlayerScreen(
                 .background(TechBackground)
                 .padding(padding)
         ) {
-            // --- VIDEO AREA ---
+            // Video player area
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -66,14 +67,15 @@ fun VideoPlayerScreen(
                 contentAlignment = Alignment.Center
             ) {
                 if (isPlayerError) {
-                    // Tampilan Error Fallback
+                    // Error fallback display
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Video tidak dapat diputar di sini.", color = Color.White)
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             onClick = {
-                                // Buka langsung ke Aplikasi YouTube / Browser
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$videoId"))
+                                // Open YouTube/browser
+                                val intent = Intent(Intent.ACTION_VIEW,
+                                    "https://www.youtube.com/watch?v=$videoId".toUri())
                                 context.startActivity(intent)
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
@@ -84,20 +86,17 @@ fun VideoPlayerScreen(
                         }
                     }
                 } else {
-                    // Player Asli
                     AndroidView(
                         factory = { ctx ->
                             YouTubePlayerView(ctx).apply {
                                 lifecycleOwner.lifecycle.addObserver(this)
                                 addYouTubePlayerListener(object : AbstractYouTubePlayerListener() {
                                     override fun onReady(youTubePlayer: YouTubePlayer) {
-                                        // Gunakan cueVideo (lebih ringan) daripada loadVideo
                                         youTubePlayer.cueVideo(videoId, 0f)
                                     }
 
                                     override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
                                         super.onError(youTubePlayer, error)
-                                        // Jika error, ubah state UI
                                         isPlayerError = true
                                     }
                                 })
@@ -108,14 +107,14 @@ fun VideoPlayerScreen(
                 }
             }
 
-            // --- INFO ---
+            // Info
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = TechTextPrimary)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(description, style = MaterialTheme.typography.bodyLarge, color = TechTextSecondary)
 
-                // Tambahan Tombol Alternatif (Selalu Muncul)
                 Spacer(modifier = Modifier.height(16.dp))
+
                 OutlinedButton(
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$videoId"))

@@ -27,7 +27,7 @@ class ProfileViewModel : ViewModel() {
 
     var isLoading = mutableStateOf(true) // Start as true to show spinner immediately
 
-    // 1. Pre-fill the form with current logged in user's data
+    // Pre-fill the form with current logged in user's data
     fun loadUserProfile() {
         viewModelScope.launch {
             isLoading.value = true
@@ -48,7 +48,7 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
-    // 2. Save the changes
+    // Save the changes
     fun saveChanges(context: Context, newImageUri: Uri?, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             isLoading.value = true

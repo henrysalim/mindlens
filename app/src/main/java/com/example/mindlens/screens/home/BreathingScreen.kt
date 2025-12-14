@@ -16,20 +16,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mindlens.ui.TechPrimary
+import com.example.mindlens.ui.TechTextPrimary
 
 @Composable
 fun BreathingScreen(onBack: () -> Unit) {
     var isBreathing by remember { mutableStateOf(false) }
-    val instruction = if (isBreathing) "Inhale..." else "Tap Start"
 
-    // Animasi Infinite
+    // Animation to be applied on the element
     val infiniteTransition = rememberInfiniteTransition()
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = if (isBreathing) 1.5f else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing), // 4 detik tarik napas
-            repeatMode = RepeatMode.Reverse // 4 detik buang napas
+            animation = tween(4000, easing = LinearEasing), // 4s breath in
+            repeatMode = RepeatMode.Reverse // 4s breath out
         )
     )
 
@@ -41,7 +41,7 @@ fun BreathingScreen(onBack: () -> Unit) {
         Text("Mindful Breathing", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = TechPrimary)
         Spacer(modifier = Modifier.height(50.dp))
 
-        // Lingkaran Animasi
+        // element that has animation
         Box(
             modifier = Modifier
                 .size(200.dp)
@@ -66,16 +66,19 @@ fun BreathingScreen(onBack: () -> Unit) {
 
         Spacer(modifier = Modifier.height(60.dp))
 
+        // start/stop exercise
         Button(
             onClick = { isBreathing = !isBreathing },
-            colors = ButtonDefaults.buttonColors(containerColor = TechPrimary),
+            colors = ButtonDefaults.buttonColors(containerColor = TechPrimary, contentColor = Color.White),
             modifier = Modifier.height(50.dp).width(200.dp)
         ) {
             Text(if (isBreathing) "Stop" else "Start Exercise")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)) {
+
+        // back to home button
+        Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) {
             Text("Back to Home")
         }
     }

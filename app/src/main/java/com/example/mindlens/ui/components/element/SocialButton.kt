@@ -44,8 +44,6 @@ fun SocialButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            // Assuming you have a drawable resource
-            // If not, replace painterResource with ImageVector logic
             Icon(
                 painter = painterResource(id = iconRes),
                 contentDescription = "Google Logo",

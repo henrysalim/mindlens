@@ -3,13 +3,12 @@ package com.example.mindlens.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+// representing diary object
 @Serializable
 data class DiaryEntry(
-    // Mencocokkan kolom "id" di Supabase
     @SerialName("id")
     val id: String,
 
-    // WAJIB: Mencocokkan kolom "user_id" yang Not Null di Supabase
     @SerialName("user_id")
     val userId: String,
 
@@ -22,11 +21,9 @@ data class DiaryEntry(
     @SerialName("mood")
     val mood: String,
 
-    // Supabase int8 = Kotlin Long (menggunakan Int bisa, tapi Long lebih aman untuk int8)
-    @SerialName("color")
+    @SerialName("color") // changed the color to Long type in order to store it to database (Supabase)
     val color: Long,
 
-    // Mencocokkan kolom "created_at"
     @SerialName("created_at")
     val createdAt: String,
 
