@@ -367,15 +367,18 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Scrollable Row agar muat 5 item
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth() // Memastikan Row memenuhi lebar kartu
+                        .padding(horizontal = 4.dp), // Padding kiri-kanan agar tidak terlalu mepet pinggir
+                    horizontalArrangement = Arrangement.SpaceBetween // Menyebarkan item secara merata
                 ) {
-                    item { StatItem("Great", moodCounts["Great"] ?: 0) }
-                    item { StatItem("Good", moodCounts["Good"] ?: 0) }
-                    item { StatItem("Neutral", moodCounts["Neutral"] ?: 0) }
-                    item { StatItem("Bad", moodCounts["Bad"] ?: 0) }
-                    item { StatItem("Awful", moodCounts["Awful"] ?: 0) }
+                    // Perhatikan: Di dalam Row biasa, kita TIDAK pakai "item { }" lagi
+                    StatItem("Great", moodCounts["Great"] ?: 0)
+                    StatItem("Good", moodCounts["Good"] ?: 0)
+                    StatItem("Neutral", moodCounts["Neutral"] ?: 0)
+                    StatItem("Bad", moodCounts["Bad"] ?: 0)
+                    StatItem("Awful", moodCounts["Awful"] ?: 0)
                 }
             }
         }

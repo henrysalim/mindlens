@@ -175,7 +175,8 @@ dependencies {
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
 
     //MAPS
-    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("com.google.maps.android:maps-compose:6.12.0")
+// Atau versi terbaru yang Anda miliki
 
     implementation("com.google.android.gms:play-services-maps:18.2.0")
 

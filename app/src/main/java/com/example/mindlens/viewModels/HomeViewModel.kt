@@ -34,6 +34,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import java.time.LocalDate
+import java.time.format.TextStyle
 
 sealed class HomeUiEvent {
     object SaveSuccess : HomeUiEvent()
@@ -226,35 +228,45 @@ class HomeViewModel(
 
     private fun calculateWeeklyStats(entries: List<DiaryEntry>): List<WeeklyData> {
         val stats = mutableListOf<WeeklyData>()
-        val standardParser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
-        standardParser.timeZone = TimeZone.getTimeZone("UTC")
-        val dayLabelFormatter = SimpleDateFormat("EEE", Locale.getDefault())
-        val loopCal = Calendar.getInstance()
-        loopCal.add(Calendar.DAY_OF_YEAR, -6)
 
-        for (i in 0..6) {
-            val dateBeingChecked = loopCal.time
+        // 1. Dapatkan Zona Waktu HP User (agar grafik sesuai hari user saat ini)
+        val zoneId = ZoneId.systemDefault()
+        val today = LocalDate.now(zoneId)
+
+        // 2. Loop 7 hari ke belakang (dari H-6 sampai Hari Ini)
+        // Kita gunakan range 6 downTo 0 agar urutannya: H-6, H-5 ... Hari Ini
+        for (i in 6 downTo 0) {
+            val targetDate = today.minusDays(i.toLong())
+
+            // 3. Filter entry yang tanggalnya SAMA dengan targetDate
             val entriesForDay = entries.filter { entry ->
-                val normalizedString = normalizeDateString(entry.createdAt)
                 try {
-                    val entryDate = standardParser.parse(normalizedString)
-                    if (entryDate != null) {
-                        isSameDay(entryDate, dateBeingChecked)
-                    } else false
+                    // Parsing ISO-8601 string langsung ke Instant (Menangani UTC, Z, Microseconds otomatis)
+                    val entryInstant = Instant.parse(entry.createdAt)
+                    // Konversi ke LocalDate sesuai Zona Waktu User
+                    val entryDate = entryInstant.atZone(zoneId).toLocalDate()
+
+                    // Bandingkan apakah harinya sama
+                    entryDate.isEqual(targetDate)
                 } catch (e: Exception) {
+                    // Jika format tanggal rusak, skip data ini
                     false
                 }
             }
 
+            // 4. Format Nama Hari (Sen, Sel, Rab...)
+            val dayLabel = targetDate.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+
+            // 5. Hitung Skor Rata-rata
             if (entriesForDay.isNotEmpty()) {
                 val totalScore = entriesForDay.map { getMoodScore(it.mood) }.sum()
                 val avgScore = totalScore / entriesForDay.size
-                stats.add(WeeklyData(day = dayLabelFormatter.format(dateBeingChecked), score = avgScore, color = getMoodColor(avgScore)))
+                stats.add(WeeklyData(day = dayLabel, score = avgScore, color = getMoodColor(avgScore)))
             } else {
-                stats.add(WeeklyData(day = dayLabelFormatter.format(dateBeingChecked), score = 0f, color = Color.LightGray))
+                stats.add(WeeklyData(day = dayLabel, score = 0f, color = Color.LightGray))
             }
-            loopCal.add(Calendar.DAY_OF_YEAR, 1)
         }
+
         return stats
     }
 
