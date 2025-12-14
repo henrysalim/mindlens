@@ -1,5 +1,6 @@
 package com.example.mindlens.repositories
 
+import androidx.core.graphics.set
 import com.example.mindlens.data.DiaryEntry
 import com.example.mindlens.supabase.DatabaseConnection // Pastikan import DatabaseConnection
 import io.github.jan.supabase.auth.auth
@@ -39,8 +40,25 @@ class DiaryRepository {
         }
     }
 
+    suspend fun updateDiaryLocation(
+        diaryId: String,
+        latitude: Double,
+        longitude: Double
+    ) {
+        supabase.from("diary_entries").update(
+            mapOf(
+                "latitude" to latitude,
+                "longitude" to longitude
+            )
+        ) {
+            filter { eq("id", diaryId) }
+        }
+    }
+
     fun getCurrentUserId(): String? {
         val user = supabase.auth.currentUserOrNull()
         return user?.id
     }
 }
+
+

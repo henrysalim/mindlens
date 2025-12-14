@@ -63,7 +63,14 @@ import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat
 import com.example.mindlens.R
 import android.provider.Settings
 import android.net.Uri
-
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mindlens.data.DiaryEntry
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.zIndex
 
 val jakartaCenter = LatLng(-6.175392, 106.827153)
 
@@ -95,15 +102,25 @@ private suspend fun getAccurateLocation(
 // Main Composable: PsychologistMapScreen (safe version)
 // -----------------------------
 @Composable
-fun PsychologistMapScreen(viewModel: HomeViewModel) {
+fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
+) {
+    var editingDiaryId by remember { mutableStateOf<String?>(null) }
+    var editingPosition by remember { mutableStateOf<LatLng?>(null) }
     var isLocationPermanentlyDenied by remember { mutableStateOf(false) }
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var isFetchingPlaces by remember { mutableStateOf(false) }
+    var floatingOffset by remember { mutableStateOf<Offset?>(null) }
+    var selectedDiaryId by remember { mutableStateOf<String?>(null) }
+    var tooltipLatLng by remember { mutableStateOf<LatLng?>(null) }
 
     val scope = rememberCoroutineScope()
+
+    val selectedDiary = remember(state.entries, selectedDiaryId) {
+        state.entries.find { it.id == selectedDiaryId }
+    }
 
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -182,6 +199,75 @@ fun PsychologistMapScreen(viewModel: HomeViewModel) {
     }
 
     // UI
+
+    LaunchedEffect(editingDiaryId) {
+        if (editingDiaryId != null) {
+            Toast.makeText(
+                context,
+                "Geser pin untuk memperbarui lokasi emosi ini",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    // TOOLTIP
+
+    LaunchedEffect(
+        tooltipLatLng,
+        cameraPositionState.position
+    ) {
+        val latLng = tooltipLatLng ?: return@LaunchedEffect
+        val projection = cameraPositionState.projection ?: return@LaunchedEffect
+
+        val point = projection.toScreenLocation(latLng)
+        floatingOffset = Offset(point.x.toFloat(), point.y.toFloat())
+    }
+
+    if (floatingOffset != null && selectedDiary != null) {
+        val offset = floatingOffset!!
+        val diary = selectedDiary!!
+        Box(
+            modifier = Modifier
+                .offset {
+                    IntOffset(
+                        offset.x.toInt() - 200, // center horizontally
+                        offset.y.toInt() - 350  // above marker
+                    )
+                }
+                .background(
+                    color = Color.White,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .border(1.dp, Color.LightGray, RoundedCornerShape(12.dp))
+                .padding(12.dp)
+                .zIndex(10f)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    diary.title,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        floatingOffset = null
+                        editingDiaryId = selectedDiary!!.id
+                        editingPosition = LatLng(
+                            selectedDiary!!.latitude!!,
+                            selectedDiary!!.longitude!!
+                        )
+                    }
+                ) {
+                    Text("Edit Location")
+                }
+            }
+        }
+    }
+
+
     Box(modifier = Modifier.fillMaxSize()) {
         // MapProperties: only enable my-location if we have permission
         val mapProperties = MapProperties(
@@ -193,25 +279,55 @@ fun PsychologistMapScreen(viewModel: HomeViewModel) {
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = mapProperties,
-            uiSettings = uiSettings
+            uiSettings = uiSettings,
+            onMapClick = {
+                selectedDiaryId = null
+                floatingOffset = null
+            }
         ) {
             recentDiaries.forEach { diary ->
                 if (diary.latitude != null && diary.longitude != null) {
                     val position = LatLng(diary.latitude, diary.longitude)
                     val (iconRes, color) = getMoodVectorIcon(diary.mood)
 
-                    Marker(
-                        state = MarkerState(position = position),
-                        title = diary.mood,
-                        snippet = diary.title,
-                        icon = bitmapDescriptorFromVector(
-                            context = context,
-                            vectorResId = iconRes,
-                            tint = color
+                    val markerPosition =
+                        if (editingDiaryId == diary.id && editingPosition != null)
+                            editingPosition!!
+                        else
+                            position
+
+                    key(diary.id) {
+                        val markerState = rememberMarkerState(
+                            position = markerPosition
                         )
-                    )
+
+                        // OBSERVE GERAKAN MARKER
+                        LaunchedEffect(editingDiaryId, markerState) {
+                            if (editingDiaryId == diary.id) {
+                                snapshotFlow { markerState.position }
+                                    .collect { newPosition ->
+                                        editingPosition = newPosition
+                                    }
+                            }
+                        }
+
+                        Marker(
+                            state = markerState,
+                            draggable = editingDiaryId == diary.id,
+                            title = diary.mood,
+                            snippet = diary.title,
+                            icon = bitmapDescriptorFromVector(context, iconRes, color),
+                            onClick = {
+                                selectedDiaryId = diary.id
+                                tooltipLatLng = markerState.position
+                                true
+                            }
+                        )
+                    }
                 }
             }
+
+
 
             // user location marker if available
             userLocation?.let { loc ->
@@ -220,6 +336,31 @@ fun PsychologistMapScreen(viewModel: HomeViewModel) {
                     title = "Your Location",
                     icon = BitmapDescriptorFactory.defaultMarker(180f)
                 )
+            }
+        }
+        if (editingDiaryId != null) {
+            FloatingActionButton(
+                onClick = {
+                    val savedId = editingDiaryId!!
+
+                    viewModel.updateDiaryLocation(
+                        diaryId = savedId,
+                        lat = editingPosition!!.latitude,
+                        lng = editingPosition!!.longitude
+                    )
+
+                    editingDiaryId = null
+                    editingPosition = null
+                    selectedDiaryId = null
+                    tooltipLatLng = null
+                    floatingOffset = null
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 100.dp),
+                containerColor = TechPrimary
+            ) {
+                Icon(Icons.Default.Check, contentDescription = "Save Location")
             }
         }
 
@@ -245,11 +386,11 @@ fun PsychologistMapScreen(viewModel: HomeViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    item { StatItem(Color(0xFF64B5F6), "Great", moodCounts["Great"] ?: 0) } // Biru
-                    item { StatItem(Color(0xFFAED581), "Good", moodCounts["Good"] ?: 0) }   // Hijau
-                    item { StatItem(Color(0xFFFFF176), "Okay", moodCounts["Neutral"] ?: 0) } // Kuning
-                    item { StatItem(Color(0xFFFFB74D), "Bad", moodCounts["Bad"] ?: 0) }     // Oranye
-                    item { StatItem(Color(0xFFE57373), "Awful", moodCounts["Awful"] ?: 0) } // Merah
+                    item { StatItem("Great", moodCounts["Great"] ?: 0) }
+                    item { StatItem("Good", moodCounts["Good"] ?: 0) }
+                    item { StatItem("Neutral", moodCounts["Neutral"] ?: 0) }
+                    item { StatItem("Bad", moodCounts["Bad"] ?: 0) }
+                    item { StatItem("Awful", moodCounts["Awful"] ?: 0) }
                 }
             }
         }
@@ -361,16 +502,41 @@ fun getMoodVectorIcon(mood: String): Pair<Int, Color> {
 
 // --- KOMPONEN PENDUKUNG ---
 @Composable
-fun StatItem(color: Color, label: String, count: Int) {
+fun StatItem(
+    mood: String,
+    count: Int
+) {
+    val (iconRes, color) = getMoodVectorIcon(mood)
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = mood,
+                tint = color,
+                modifier = Modifier.size(18.dp).graphicsLayer { alpha = 0.9f }
+            )
+
+            Text(
+                text = mood,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
+                color = TechTextPrimary
+            )
         }
-        Text("$count", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TechTextPrimary)
+
+        Text(
+            text = "$count",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = TechTextPrimary
+        )
     }
 }
+
 
 fun getMoodAttributes(mood: String): Pair<Float, String> {
     return when (mood.lowercase()) {
