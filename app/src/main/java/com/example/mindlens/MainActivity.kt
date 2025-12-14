@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -15,6 +16,7 @@ import com.example.mindlens.screens.MainScreen
 import com.example.mindlens.screens.splash.OnboardingScreen
 import com.example.mindlens.screens.splash.SplashScreen
 import com.example.mindlens.ui.DailyDiaryTheme
+import com.example.mindlens.viewModels.AuthViewModel
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -40,6 +42,7 @@ object Routes {
 @Composable
 fun AppNavigation() {
     val rootNavController = rememberNavController()
+    val authViewModel: AuthViewModel = viewModel()
 
     NavHost(navController = rootNavController, startDestination = Routes.Splash) {
 
@@ -77,10 +80,9 @@ fun AppNavigation() {
 
         // 5. Main App (Dashboard)
         composable(Routes.MainApp) {
-            // PERBAIKAN: Masukkan parameter onLogout di sini
             MainScreen(
                 onLogout = {
-                    // Logic Logout: Kembali ke halaman Login & hapus history backstack
+                    authViewModel.signOut()
                     rootNavController.navigate(Routes.RegisterOptions) {
                         popUpTo(Routes.MainApp) { inclusive = true }
                     }

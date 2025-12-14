@@ -1,6 +1,6 @@
 package com.example.mindlens.services
 
-import com.example.mindlens.model.NewsApiResponse
+import com.example.mindlens.data.NewsApiResponse
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory

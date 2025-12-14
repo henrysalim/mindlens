@@ -1,8 +1,8 @@
 package com.example.mindlens.screens.profile.subprofile
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,17 +19,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.example.mindlens.ui.TechBackground
 import com.example.mindlens.ui.TechPrimary
 import com.example.mindlens.ui.TechTextPrimary
 import com.example.mindlens.ui.TechTextSecondary
-import com.example.mindlens.ui.components.SimpleTopBar
-import java.io.File
+import com.example.mindlens.ui.components.element.SimpleTopBar
+import com.example.mindlens.R
 
 @Composable
 fun AboutAppScreen(onBack: () -> Unit) {
@@ -51,8 +51,8 @@ fun AboutAppScreen(onBack: () -> Unit) {
                 colors = CardDefaults.cardColors(containerColor = TechPrimary),
                 shape = RoundedCornerShape(24.dp)
             ) {
-                AsyncImage(
-                    model = File("../../../../../../../ic_launcher-playstore.png"),
+                Image(
+                    painter = painterResource(R.drawable.logo),
                     contentDescription = "MindLens Logo"
                 )
             }

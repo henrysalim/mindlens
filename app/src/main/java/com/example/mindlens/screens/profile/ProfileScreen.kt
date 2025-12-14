@@ -1,47 +1,39 @@
 package com.example.mindlens.screens.profile // Sesuaikan package
 
 import android.graphics.BitmapFactory
-import android.net.Uri
 import android.util.Base64
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.mindlens.model.UserProfile
 import com.example.mindlens.ui.*
+import com.example.mindlens.ui.components.element.CustomToast
 import com.example.mindlens.ui.components.profile.ProfileMenuItem
 import com.example.mindlens.ui.components.profile.ProfileStat
 import com.example.mindlens.viewModels.AuthViewModel
-import com.example.mindlens.viewModels.EditProfileViewModel
+import com.example.mindlens.viewModels.ProfileViewModel
 
 @Composable
 fun ProfileScreen(
@@ -49,24 +41,21 @@ fun ProfileScreen(
     onNavigateToAbout: () -> Unit,
     onNavigateToTnc: () -> Unit,
     onLogout: () -> Unit,
-    authViewModel: AuthViewModel = viewModel(),
-    profileViewModel: EditProfileViewModel = viewModel()
+    profileViewModel: ProfileViewModel
 ) {
-    val userName = remember { authViewModel.getUserName() }
-    val email = remember { authViewModel.getEmail() }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-
     LaunchedEffect(Unit) {
         profileViewModel.loadUserProfile()
     }
 
+    val showSuccess by remember { profileViewModel.showSuccessMessage }
+
     Box(modifier = Modifier.fillMaxSize().background(TechBackground)) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            // 1. HEADER PROFILE (Mirip Home)
+            // header profile
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp)
+                    .height(320.dp)
             ) {
                 // Gradient Background
                 Box(
@@ -124,12 +113,25 @@ fun ProfileScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            userName,
+                            profileViewModel.name.value,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = TechTextPrimary
                         )
-                        Text(email, style = MaterialTheme.typography.bodyMedium, color = TechTextSecondary)
+                        Text(
+                            profileViewModel.email.value,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TechTextSecondary
+                        )
+
+                        if (profileViewModel.bio.value.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                profileViewModel.bio.value,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TechTextSecondary
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -195,5 +197,14 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(100.dp)) // Bottom Padding
             }
         }
+
+        CustomToast(
+            visible = showSuccess,
+            message = "Profile updated successfully!",
+            isError = false,
+            onDismiss = {
+                profileViewModel.showSuccessMessage.value = false
+            }
+        )
     }
 }

@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.example.mindlens.ui.TechBackground
 import com.example.mindlens.ui.TechTextPrimary
 import com.example.mindlens.ui.TechTextSecondary
-import com.example.mindlens.ui.components.SimpleTopBar
+import com.example.mindlens.ui.components.element.SimpleTopBar
 
 @Composable
 fun TermsConditionsScreen(onBack: () -> Unit) {

@@ -22,16 +22,15 @@ class ArticleViewModel : ViewModel() {
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
 
-    // 1. PERBAIKAN QUERY DEFAULT:
     // Query ini akan otomatis dijalankan saat halaman dibuka.
     // Menggunakan 'OR' agar mencari salah satu dari topik ini.
     var searchQuery by mutableStateOf("kesehatan mental")
 
     var currentPage by mutableIntStateOf(1)
-    var sortBy by mutableStateOf("publishedAt") // Default: Terbaru
+    var sortBy by mutableStateOf("publishedAt")
 
     init {
-        // Fungsi ini otomatis jalan saat ViewModel dibuat (saat layar dibuka)
+        // Fungsi ini otomatis jalan saat layar dibuka
         fetchArticles()
     }
 
@@ -43,7 +42,7 @@ class ArticleViewModel : ViewModel() {
                 val response = apiService.searchArticles(
                     query = searchQuery,
                     page = currentPage,
-                    sortBy = sortBy, // Filter (Newest/Relevant) akan diterapkan di sini
+                    sortBy = sortBy,
                     apiKey = apiKey
                 )
                 if (response.isSuccessful && response.body() != null) {

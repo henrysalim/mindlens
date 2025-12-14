@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.mindlens.data.HomeUiState
+import com.example.mindlens.data.WeeklyData
 import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.repositories.DiaryRepository
 import kotlinx.coroutines.channels.Channel
@@ -25,28 +27,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.PI
 
-// --- DATA CLASS PENDUKUNG ---
-
-data class WeeklyData(
-    val day: String,   // Contoh: "Mon", "Tue"
-    val score: Float,  // 0.0 sampai 1.0
-    val color: Color   // Warna bar
-)
-
-data class HomeUiState(
-    val entries: List<DiaryEntry> = emptyList(),
-    val weeklyStats: List<WeeklyData> = emptyList(),
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val averageMood: String = "Belum ada data"
-)
-
 sealed class HomeUiEvent {
     object SaveSuccess : HomeUiEvent()
     data class ShowMessage(val message: String) : HomeUiEvent()
 }
-
-// --- VIEW MODEL ---
 
 class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
 
@@ -89,7 +73,6 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         }
     }
 
-    // --- TAMBAHAN BARU: FUNGSI UPDATE ---
     fun updateDiaryEntry(entry: DiaryEntry) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -104,7 +87,6 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         }
     }
 
-    // --- TAMBAHAN BARU: FUNGSI DELETE ---
     fun deleteDiaryEntry(id: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -136,13 +118,10 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
                 val titleFormatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
                 val autoTitleDate = titleFormatter.format(now)
 
-                val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-                isoFormatter.timeZone = TimeZone.getTimeZone("UTC")
-                val timestamp = isoFormatter.format(now)
+                val timestamp = java.time.Instant.now().toString()
 
                 val generatedId = UUID.randomUUID().toString()
 
-                // --- RANDOMIZER LOKASI (PERSEMPIT RADIUS) ---
                 fun randomizeLocation(
                     lat: Double,
                     lng: Double,
@@ -192,7 +171,6 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         }
     }
 
-    // --- GANTI FUNGSI calculateWeeklyStats DENGAN INI ---
     private fun calculateWeeklyStats(entries: List<DiaryEntry>): List<WeeklyData> {
         val stats = mutableListOf<WeeklyData>()
 
@@ -247,24 +225,19 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         return stats
     }
 
-    // --- FUNGSI BARU: PEMBERSIH STRING TANGGAL (PENTING!) ---
     private fun normalizeDateString(dateString: String): String {
         var clean = dateString
 
-        // 1. Ganti timezone "+00:00" atau "Z" menjadi "+0000" (Format standar SimpleDateFormat)
         if (clean.endsWith("Z")) {
             clean = clean.replace("Z", "+0000")
         } else if (clean.endsWith("+00:00")) {
             clean = clean.replace("+00:00", "+0000")
         }
 
-        // 2. Handle Milidetik
-        // Pisahkan bagian tanggal+jam dengan timezone
-        // Contoh input: "2025-12-07T10:36:16.532091+0000"
         val parts = clean.split("+")
         if (parts.size == 2) {
-            var dateTimePart = parts[0] // "2025-12-07T10:36:16.532091"
-            val timezonePart = "+" + parts[1] // "+0000"
+            var dateTimePart = parts[0]
+            val timezonePart = "+" + parts[1]
 
             if (dateTimePart.contains(".")) {
                 // Punya milidetik
@@ -299,8 +272,6 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                 cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
-
-    // --- HELPER LAINNYA ---
 
     private fun getMoodScore(mood: String): Float {
         return when (mood.lowercase()) {

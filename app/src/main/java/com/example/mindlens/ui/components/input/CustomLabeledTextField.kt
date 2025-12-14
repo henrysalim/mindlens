@@ -1,4 +1,4 @@
-package com.example.mindlens.ui.components
+package com.example.mindlens.ui.components.input
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth

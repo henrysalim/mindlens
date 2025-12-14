@@ -30,6 +30,7 @@ import coil.request.ImageRequest
 import com.example.mindlens.viewModels.ArticleViewModel
 import com.example.mindlens.model.Article
 import com.example.mindlens.ui.*
+import com.example.mindlens.ui.components.article.ArticleItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,18 +47,16 @@ fun ArticleScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = TechBackground)
             )
         },
-        containerColor = TechBackground // Pastikan background scaffold benar
+        containerColor = TechBackground
     ) { padding ->
-        // GANTI STRUKTUR UTAMA
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 50.dp) // Padding internal list (biar scroll tembus FAB)
+            contentPadding = PaddingValues(bottom = 50.dp)
         ) {
-            // ITEM 1: Search Bar (Masuk sebagai item list)
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -82,7 +81,6 @@ fun ArticleScreen(
                 )
             }
 
-            // ITEM 2: Sort Chips
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
@@ -106,7 +104,6 @@ fun ArticleScreen(
                 }
             }
 
-            // ITEM 3: Loading / Error / List Artikel
             if (viewModel.isLoading) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
@@ -125,7 +122,6 @@ fun ArticleScreen(
                 }
             }
 
-            // ITEM 4: Pagination (Masuk sebagai footer list)
             item {
                 if (viewModel.articles.isNotEmpty()) {
                     Row(
@@ -163,71 +159,3 @@ fun ArticleScreen(
     }
 }
 
-@Composable
-fun ArticleItem(article: Article, onClick: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = TechSurface),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(2.dp),
-        modifier = Modifier.fillMaxWidth().clickable { onClick() }
-    ) {
-        Row(modifier = Modifier.padding(12.dp)) {
-            // 2. PERBAIKAN GAMBAR:
-            // Menggunakan ImageRequest Builder agar lebih stabil
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(article.image) // URL dari API
-                    .listener(
-                        onStart = { Log.d("DEBUG_IMAGE", "Mulai loading: ${article.image}") },
-                        onSuccess = { _, _ -> Log.d("DEBUG_IMAGE", "Sukses load gambar!") },
-                        onError = { _, result -> Log.e("DEBUG_IMAGE", "Error load gambar: ${result.throwable.message}") }
-                    )
-                    .crossfade(true) // Efek muncul halus
-                    .build(),
-                contentDescription = "Article Image",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.LightGray)
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Text Info
-            Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.height(100.dp)) {
-                Text(
-                    text = article.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TechTextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Badge Sumber Berita
-                    Surface(
-                        color = TechPrimary.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = article.source?.name ?: "News",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TechPrimary,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    // Tanggal
-                    Text(
-                        text = if (article.publishedAt.length >= 10) article.publishedAt.take(10) else article.publishedAt,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TechTextSecondary
-                    )
-                }
-            }
-        }
-    }
-}
