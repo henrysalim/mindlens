@@ -13,12 +13,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
 import com.example.mindlens.Routes
-import com.example.mindlens.viewModel.AuthState
-import com.example.mindlens.viewModel.AuthViewModel
+import com.example.mindlens.viewModels.AuthState
+import com.example.mindlens.viewModels.AuthViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.em
 import com.example.mindlens.ui.PrimaryGreen
 
 @Composable
@@ -72,6 +73,6 @@ fun SplashScreen(
 //            painter = painterResource(id = R.drawable.ic_diary_logo),
 //            contentDescription = "Logo"
 //        )
-        Text(text = "MindLens", fontWeight = FontWeight.Bold, color = PrimaryGreen)
+        Text(text = "MindLens", fontWeight = FontWeight.Bold, color = PrimaryGreen, fontSize = 12.em)
     }
 }

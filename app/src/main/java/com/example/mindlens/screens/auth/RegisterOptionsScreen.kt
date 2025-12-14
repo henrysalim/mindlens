@@ -1,6 +1,5 @@
 package com.example.mindlens.screens.auth
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -17,14 +16,13 @@ import androidx.navigation.NavController
 import com.example.mindlens.R
 import com.example.mindlens.supabase.DatabaseConnection
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mindlens.Routes
-import com.example.mindlens.ui.components.CustomLabeledTextField
-import com.example.mindlens.ui.components.CustomToast
-import com.example.mindlens.ui.components.SocialButton
-import com.example.mindlens.viewModel.AuthState
-import com.example.mindlens.viewModel.AuthViewModel
+import com.example.mindlens.ui.components.input.CustomLabeledTextField
+import com.example.mindlens.ui.components.element.CustomToast
+import com.example.mindlens.ui.components.element.SocialButton
+import com.example.mindlens.viewModels.AuthState
+import com.example.mindlens.viewModels.AuthViewModel
 import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
 import io.github.jan.supabase.compose.auth.composeAuth
 import kotlinx.coroutines.launch
