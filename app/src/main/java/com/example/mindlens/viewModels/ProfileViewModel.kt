@@ -2,7 +2,6 @@ package com.example.mindlens.viewModels
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,13 +11,15 @@ import com.example.mindlens.supabase.DatabaseConnection
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
 
-class EditProfileViewModel : ViewModel() {
+class ProfileViewModel : ViewModel() {
     private val repository = ProfileRepository()
 
     // State variables
     var name = mutableStateOf("") // Will be pre-filled
     var email = mutableStateOf("") // Will be pre-filled
     var bio = mutableStateOf("") // Will be pre-filled
+    var id = mutableStateOf("") // Will be pre-filled
+    var showSuccessMessage = mutableStateOf(false)
 
     // Image States
     var currentAvatarBase64 = mutableStateOf<String?>(null)
@@ -35,6 +36,7 @@ class EditProfileViewModel : ViewModel() {
                 if (profile != null) {
                     name.value = profile.fullName ?: ""
                     bio.value = profile.bio ?: ""
+                    id.value = profile.id
                     currentAvatarBase64.value = profile.avatar ?: ""
                     email.value = DatabaseConnection.supabase.auth.currentUserOrNull()?.email ?: ""
                 }

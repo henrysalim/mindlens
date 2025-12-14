@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,12 +27,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 // Pastikan pakai Coil yang sesuai (jika merah, coba ganti coil3 -> coil)
 import coil.compose.AsyncImage
 import com.example.mindlens.model.Article
-import com.example.mindlens.model.ArticleComments
 // Hapus import ArticleComment yang lama karena kita buat di bawah
 import com.example.mindlens.ui.*
+import com.example.mindlens.ui.components.article.CommentItem
+import com.example.mindlens.ui.components.element.CustomToast
 import com.example.mindlens.viewModels.ArticleCommentsViewModel
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,10 +40,16 @@ fun ArticleDetailScreen(
     onBack: () -> Unit,
     viewModel: ArticleCommentsViewModel = viewModel()
 ) {
+    // context
     val context = LocalContext.current
 
     // State for Input
     var commentText by remember { mutableStateOf("") }
+
+    // Toast States
+    var toastVisible by remember { mutableStateOf(false) }
+    var toastMessage by remember { mutableStateOf("") }
+    var isToastError by remember { mutableStateOf(false) }
 
     // Subscribe to ViewModel Data
     val commentsList by viewModel.comments.collectAsState()
@@ -78,7 +82,7 @@ fun ArticleDetailScreen(
                     .weight(1f)
                     .padding(horizontal = 16.dp)
             ) {
-                // --- GAMBAR & JUDUL ---
+                // Image and title
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                     AsyncImage(
@@ -120,7 +124,7 @@ fun ArticleDetailScreen(
                     HorizontalDivider(color = Color.LightGray)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Deskripsi / Konten
+                    // Content
                     Text(
                         text = article.description ?: "No description available.",
                         style = MaterialTheme.typography.bodyLarge,
@@ -136,7 +140,7 @@ fun ArticleDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Tombol Buka Browser
+                    // Open in browser
                     Button(
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(article.url))
@@ -151,6 +155,7 @@ fun ArticleDetailScreen(
                         Text("Read Full Article in Browser")
                     }
 
+                    // Comments section
                     Spacer(modifier = Modifier.height(32.dp))
                     Text(
                         "Comments (${commentsList.size})",
@@ -160,7 +165,7 @@ fun ArticleDetailScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // --- LIST KOMENTAR ---
+                // Comments list
                 items(commentsList) { comment ->
                     CommentItem(comment)
                     Spacer(modifier = Modifier.height(12.dp))
@@ -169,8 +174,7 @@ fun ArticleDetailScreen(
                 item { Spacer(modifier = Modifier.height(80.dp)) } // Spacer bawah
             }
 
-            // --- INPUT KOMENTAR (Di Bawah) ---
-            // --- INPUT SECTION ---
+            // Comment input
             Surface(
                 shadowElevation = 16.dp,
                 color = TechSurface,
@@ -193,7 +197,7 @@ fun ArticleDetailScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // SEND BUTTON
+                    // Submit
                     IconButton(
                         onClick = {
                             if (commentText.isNotBlank()) {
@@ -201,52 +205,50 @@ fun ArticleDetailScreen(
                                     newsUrl = article.url,
                                     commentText = commentText,
                                     onSuccess = {
-                                        commentText = "" // Clear input on success
+                                        // Success toast
+                                        commentText = "" // Clear input
+                                        toastMessage = "Comment posted!"
+                                        isToastError = false
+                                        toastVisible = true
                                     },
                                     onError = { error ->
-                                        // Show Toast error
-                                        android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT)
-                                            .show()
+                                        // Error toast
+                                        toastMessage = error
+                                        isToastError = true
+                                        toastVisible = true
                                     }
                                 )
                             }
                         },
                         modifier = Modifier.background(TechPrimary, CircleShape)
                     ) {
-                        Icon(Icons.Default.Send, null, tint = Color.White)
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp).padding(4.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.Send, null, tint = Color.White)
+                        }
                     }
                 }
             }
         }
-    }
-}
 
-@Composable
-fun CommentItem(comment: ArticleComments) {
-    Row(verticalAlignment = Alignment.Top) {
         Box(
-            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray),
-            contentAlignment = Alignment.Center
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 16.dp)
+                .statusBarsPadding(), // Ensures it doesn't hide behind status bar
+            contentAlignment = Alignment.TopCenter
         ) {
-            // Fallback User Icon since model doesn't have user name yet
-            Icon(Icons.Default.Person, contentDescription = null, tint = Color.White)
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Anonymous", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Spacer(modifier = Modifier.width(8.dp))
-                // You can add a date helper here if you want
-                Text("Just now", color = Color.Gray, fontSize = 12.sp)
-            }
-            Text(comment.comment, fontSize = 14.sp, color = TechTextPrimary)
+            CustomToast(
+                visible = toastVisible,
+                message = toastMessage,
+                isError = isToastError,
+                onDismiss = { toastVisible = false }
+            )
         }
     }
 }
-
-// --- DATA MODEL (Ditambahkan di sini agar tidak error Unresolved Reference) ---
-data class ArticleComment(
-    val user: String,
-    val text: String,
-    val date: String
-)

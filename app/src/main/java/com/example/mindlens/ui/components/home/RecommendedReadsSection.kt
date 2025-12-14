@@ -25,7 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.mindlens.screens.home.ArticleItem
+import com.example.mindlens.data.ArticleItem
 import com.example.mindlens.ui.TechAccent
 import com.example.mindlens.ui.TechPrimary
 import com.example.mindlens.ui.TechSurface

@@ -23,7 +23,7 @@ import com.example.mindlens.ui.TechTextSecondary
 
 @Composable
 fun RecentHistorySection(diaryList: List<DiaryEntry>, onSeeAllClick: () -> Unit, onItemClick: (DiaryEntry) -> Unit) {
-    Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Recent Diaries", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechTextPrimary)
             Text("See All", color = TechPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.clickable { onSeeAllClick() })

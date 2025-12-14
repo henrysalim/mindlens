@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mindlens.model.DiaryEntry
-import com.example.mindlens.helpers.formatDiaryDate
+import com.example.mindlens.helpers.formatDate
 import com.example.mindlens.viewModels.HomeViewModel
 import com.example.mindlens.ui.TechBackground
 import com.example.mindlens.ui.TechPrimary
@@ -330,7 +330,7 @@ fun DiaryItemWithAction(
                     maxLines = 1
                 )
                 Text(
-                    text = "${formatDiaryDate(entry.createdAt)} • ${entry.mood}",
+                    text = "${formatDate(entry.createdAt)} • ${entry.mood}",
                     style = MaterialTheme.typography.labelSmall,
                     color = TechTextSecondary
                 )

@@ -1,4 +1,4 @@
-package com.example.mindlens.ui.components
+package com.example.mindlens.ui.components.element
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement

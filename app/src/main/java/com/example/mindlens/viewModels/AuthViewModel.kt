@@ -59,22 +59,19 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
 
-            // --- STEP A: Check if email is taken ---
             val emailExists = isEmailRegistered(email)
-
+            // check if email exist/not
             if (emailExists) {
                 _authState.value = AuthState.Error("Email already taken")
                 onError("This email is already registered. Please login.")
                 return@launch // STOP HERE
             }
 
-            // --- STEP B: Proceed with Signup ---
             try {
                 DatabaseConnection.supabase.auth.signUpWith(Email) {
                     this.email = email
                     this.password = pass
                     data = buildJsonObject {
-                        // GANTI "Display name" MENJADI "full_name" (Standar Supabase)
                         put("full_name", fullName)
                     }
                 }
@@ -84,7 +81,7 @@ class AuthViewModel : ViewModel() {
                 if (session != null) {
                     onSuccess()
                 } else {
-                    onSuccess() // Or show "Confirm Email" message
+                    onSuccess()
                 }
             } catch (e: Exception) {
                 onError(e.message ?: "Sign up failed")

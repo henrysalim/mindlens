@@ -2,20 +2,25 @@ package com.example.mindlens.viewModels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.mindlens.model.ArticleComments
+import com.example.mindlens.model.GetArticleComment
+import com.example.mindlens.model.PostArticleComment
 import com.example.mindlens.repositories.ArticleCommentsRepository
 import com.example.mindlens.supabase.DatabaseConnection
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.UUID
 
 class ArticleCommentsViewModel: ViewModel() {
     private val repository = ArticleCommentsRepository()
 
     // State for the list of comments
-    private val _comments = MutableStateFlow<List<ArticleComments>>(emptyList())
+    private val _comments = MutableStateFlow<List<GetArticleComment>>(emptyList())
     val comments = _comments.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
@@ -45,19 +50,17 @@ class ArticleCommentsViewModel: ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                // 1. Get current User ID (optional, but good practice if you have user_id column)
-                val currentUser = DatabaseConnection.supabase.auth.currentUserOrNull()
-                // If you added 'user_id' to your table, pass it here.
-                // For now, we stick to your data class model.
+                val currentUser = DatabaseConnection.supabase.auth.currentUserOrNull()?.id
+
+                val timestamp = java.time.Instant.now().toString()
 
                 // 2. Create the object
-                val newComment = ArticleComments(
-                    // Generate a random ID locally or let DB handle it (if auto-gen)
-                    // If your DB ID is UUID, generate one here:
+                val newComment = PostArticleComment(
                     id = UUID.randomUUID().toString(),
                     comment = commentText,
                     news_url = newsUrl,
-                    createdAt = null // Let Supabase handle the timestamp
+                    user_id = currentUser,
+                    createdAt = timestamp // Let Supabase handle the timestamp
                 )
 
                 // 3. Send to Supabase
@@ -68,6 +71,7 @@ class ArticleCommentsViewModel: ViewModel() {
 
                 onSuccess()
             } catch (e: Exception) {
+                // if error occurs
                 onError(e.message ?: "Failed to post comment")
             }
         }

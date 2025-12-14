@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mindlens.model.DiaryEntry
-import com.example.mindlens.helpers.formatDiaryDate
+import com.example.mindlens.helpers.formatDate
 // Pastikan import warna ini sesuai dengan file Theme Anda
 import com.example.mindlens.ui.TechBackground
 import com.example.mindlens.ui.TechTextPrimary
@@ -137,7 +137,7 @@ fun DiaryDetailScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = formatDiaryDate(entry.createdAt), // Memanggil fungsi helper baru
+                        text = formatDate(entry.createdAt), // Memanggil fungsi helper baru
                         style = MaterialTheme.typography.labelMedium,
                         color = TechTextSecondary
                     )

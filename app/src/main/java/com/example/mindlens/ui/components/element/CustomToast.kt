@@ -1,4 +1,4 @@
-package com.example.mindlens.ui.components
+package com.example.mindlens.ui.components.element
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn

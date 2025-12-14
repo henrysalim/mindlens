@@ -25,7 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.mindlens.helpers.formatDiaryDate
+import com.example.mindlens.helpers.formatDate
 import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.ui.TechSurface
 import com.example.mindlens.ui.TechTextPrimary
@@ -44,7 +44,7 @@ fun DiaryItem(entry: DiaryEntry, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(entry.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = TechTextPrimary, maxLines = 1)
-                Text("${formatDiaryDate(entry.createdAt)} • ${entry.mood}", style = MaterialTheme.typography.labelSmall, color = TechTextSecondary)
+                Text("${formatDate(entry.createdAt)} • ${entry.mood}", style = MaterialTheme.typography.labelSmall, color = TechTextSecondary)
             }
             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TechTextSecondary)
         }
