@@ -304,6 +304,21 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         }
     }
 
+    // DRAG GRAB
+    fun updateDiaryLocation(
+        diaryId: String,
+        lat: Double,
+        lng: Double
+    ) {
+        viewModelScope.launch {
+            repository.updateDiaryLocation(
+                diaryId = diaryId,
+                latitude = lat,
+                longitude = lng
+            )
+        }
+    }
+
     private fun sendEvent(event: HomeUiEvent) {
         viewModelScope.launch { _uiEvent.send(event) }
     }
