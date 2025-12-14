@@ -8,9 +8,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -19,30 +26,11 @@ import androidx.compose.ui.unit.sp
 import com.example.mindlens.ui.TechBackground
 import com.example.mindlens.ui.TechTextPrimary
 import com.example.mindlens.ui.TechTextSecondary
-import com.example.mindlens.ui.components.element.SimpleTopBar
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TermsConditionsScreen(onBack: () -> Unit) {
-    Scaffold(
-        topBar = { SimpleTopBar("Terms & Conditions", onBack) }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .background(TechBackground)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp)
-        ) {
-            Text(
-                "Terms of Service",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = TechTextPrimary
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val dummyText = """
+    val termsConditions = """
                 1. Introduction
                 Welcome to MindLens. By using our app, you agree to these terms.
 
@@ -59,7 +47,44 @@ fun TermsConditionsScreen(onBack: () -> Unit) {
                 We may update these terms from time to time. Continued use of the app implies acceptance of the new terms.
             """.trimIndent()
 
-            Text(dummyText, color = TechTextSecondary, lineHeight = 24.sp, style = MaterialTheme.typography.bodyMedium)
+    Scaffold(
+        topBar = {
+            // the top bar
+            TopAppBar(
+                title = { Text("Terms & Conditions", fontWeight = FontWeight.Bold, color = TechTextPrimary) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TechTextPrimary)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = TechBackground)
+            )
+        },
+        containerColor = TechBackground
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .background(TechBackground)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp)
+        ) {
+            // the title
+            Text(
+                "Terms of Service",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = TechTextPrimary
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                termsConditions,
+                color = TechTextSecondary,
+                lineHeight = 24.sp,
+                style = MaterialTheme.typography.bodyMedium
+            )
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

@@ -1,5 +1,6 @@
 package com.example.mindlens.viewModels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mindlens.supabase.DatabaseConnection
@@ -20,7 +21,7 @@ class AuthViewModel : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState = _authState.asStateFlow()
 
-    // 1. Check if user is already logged in (For Splash Screen)
+    // Check if user is already logged in (For Splash Screen)
     fun checkAuthStatus() {
         viewModelScope.launch {
             // This checks the local storage (SharedPreferences) for a valid token
@@ -36,7 +37,7 @@ class AuthViewModel : ViewModel() {
 
     suspend fun isEmailRegistered(email: String): Boolean {
         return try {
-            // Calls the SQL function we just created
+            // Calls the SQL function to check whether the email is exist/not
             val result = DatabaseConnection.supabase.postgrest.rpc(
                 function = "check_email_exists",
                 parameters = mapOf("email_to_check" to email)
@@ -44,11 +45,12 @@ class AuthViewModel : ViewModel() {
 
             return result
         } catch (e: Exception) {
-            false // Default to false if check fails (let standard signup handle it)
+            Log.e("ERR_REG_EMAIL", e.message.toString())
+            false
         }
     }
 
-    // 2. Update the signUp function
+    // The signUp function
     fun signUp(
         email: String,
         pass: String,
@@ -64,7 +66,7 @@ class AuthViewModel : ViewModel() {
             if (emailExists) {
                 _authState.value = AuthState.Error("Email already taken")
                 onError("This email is already registered. Please login.")
-                return@launch // STOP HERE
+                return@launch
             }
 
             try {
@@ -90,7 +92,7 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    // 3. Sign In with Email
+    // Sign In with Email
     fun signIn(
         email: String,
         pass: String,
@@ -100,20 +102,21 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                // 1. Attempt to Login
+                // Attempt to Login
                 DatabaseConnection.supabase.auth.signInWith(Email) {
                     this.email = email
                     this.password = pass
                 }
 
-                // 2. If code reaches here, it means credentials are CORRECT!
+                // If code reaches here, it means credentials are CORRECT!
                 _authState.value = AuthState.Authenticated
                 onSuccess()
 
             } catch (e: Exception) {
-                // 3. If code jumps here, credentials are WRONG (or network issue)
+                // If code jumps here, credentials are WRONG (or network issue)
                 // Common message: "Invalid login credentials"
                 val errorMessage = e.message ?: "Login failed"
+                Log.e("ERR_SIGN_IN_EMAIL", errorMessage)
 
                 // Determine user-friendly message
                 val cleanMessage = if (errorMessage.contains("Invalid login credentials")) {
@@ -131,8 +134,6 @@ class AuthViewModel : ViewModel() {
     fun handleGoogleResult(result: NativeSignInResult) {
         when (result) {
             is NativeSignInResult.Success -> {
-                // Supabase Client has already handled the token exchange internally.
-                // We just need to update our UI state.
                 _authState.value = AuthState.Authenticated
             }
 
@@ -145,13 +146,11 @@ class AuthViewModel : ViewModel() {
             }
 
             is NativeSignInResult.ClosedByUser -> {
-                // Usually we don't change state here, just stay on the login screen
-                // Or you could set a specialized error if you want to show a snackbar
             }
         }
     }
 
-    // 5. Sign Out
+    // Sign Out
     fun signOut() {
         viewModelScope.launch {
             DatabaseConnection.supabase.auth.signOut()
@@ -162,25 +161,13 @@ class AuthViewModel : ViewModel() {
     fun getUserName(): String {
         val user = DatabaseConnection.supabase.auth.currentUserOrNull()
 
-        // Cek berbagai kemungkinan key
+        // get the user's full name
         val fullName = user?.userMetadata?.get("full_name")?.jsonPrimitive?.content
             ?: user?.userMetadata?.get("name")?.jsonPrimitive?.content
             ?: user?.userMetadata?.get("Display name")?.jsonPrimitive?.content // Jaga-jaga kalau ada data lama
             ?: "User"
 
         return fullName
-    }
-
-    fun getEmail(): String {
-        val user = DatabaseConnection.supabase.auth.currentUserOrNull()
-
-        // The email is a top-level property of the User object
-        return user?.email ?: "No Email"
-    }
-
-    fun getUserAvatar(): String? {
-        val user = DatabaseConnection.supabase.auth.currentUserOrNull()
-        return user?.userMetadata?.get("avatar_url")?.jsonPrimitive?.content
     }
 }
 

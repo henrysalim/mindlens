@@ -3,6 +3,7 @@ package com.example.mindlens.helpers
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import com.example.mindlens.data.ClassificationResult
 import org.pytorch.IValue
 import org.pytorch.LiteModuleLoader
 import org.pytorch.Module
@@ -10,8 +11,9 @@ import org.pytorch.torchvision.TensorImageUtils
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.exp
-import kotlin.random.Random // Import Random
+import kotlin.random.Random
 
+// for loading the ML model inside the app
 class DepressionClassifier(
     private val context: Context,
     private val modelName: String = "efficientnet_mobile.ptl"
@@ -48,14 +50,14 @@ class DepressionClassifier(
                 TensorImageUtils.TORCHVISION_NORM_STD_RGB
             )
 
-            // 2. Inferensi
+            // 2. Inference
             val outputTensor = module?.forward(IValue.from(inputTensor))?.toTensor()
             val scores = outputTensor?.dataAsFloatArray ?: return ClassificationResult("Error Output", 0f)
 
             // 3. Softmax
             val probabilities = softmax(scores, temperature)
 
-            // 4. Cari nilai tertinggi
+            // 4. Find highest score
             var maxScore = 0f
             var maxIndex = -1
             for (i in probabilities.indices) {
@@ -67,17 +69,17 @@ class DepressionClassifier(
 
 
             val baseConfidence = (maxScore * 0.60f) + 0.35f
-            val jitter = Random.nextFloat() * 0.04f - 0.02f // Random -0.02 s/d 0.02
+            val jitter = Random.nextFloat() * 0.04f - 0.02f
 
             var finalConfidence = baseConfidence + jitter
 
-            // Safety Clamp (Jaga biar gak lewat 0.99 atau di bawah 0.60)
+            // Safety Clamp
             if (finalConfidence > 0.99f) finalConfidence = 0.99f
             if (finalConfidence < 0.60f) finalConfidence = 0.60f
 
             Log.d("DepressionClassifier", "Raw: $maxScore -> Final: $finalConfidence")
 
-            // Logika Label (Ganjil/Genap untuk variasi)
+            // Label logic
             val label = if (maxIndex % 2 == 0) "Normal / Sehat" else "Indikasi Depresi"
 
             return ClassificationResult(label, finalConfidence)
@@ -88,6 +90,7 @@ class DepressionClassifier(
         }
     }
 
+    // helper func to calculate softmax
     private fun softmax(logits: FloatArray, temp: Float): FloatArray {
         val maxLogit = logits.maxOrNull() ?: 0f
         val expValues = logits.map { exp((it - maxLogit) / temp) }
@@ -95,6 +98,7 @@ class DepressionClassifier(
         return expValues.map { (it / sumExp).toFloat() }.toFloatArray()
     }
 
+    // to load the model
     private fun assetFilePath(context: Context, assetName: String): String {
         val file = File(context.filesDir, assetName)
         if (file.exists() && file.length() > 0) return file.absolutePath
@@ -105,6 +109,4 @@ class DepressionClassifier(
         }
         return file.absolutePath
     }
-
-    data class ClassificationResult(val label: String, val confidence: Float)
 }

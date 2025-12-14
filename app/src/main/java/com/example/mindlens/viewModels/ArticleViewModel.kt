@@ -12,25 +12,23 @@ import com.example.mindlens.services.NewsApiService
 import kotlinx.coroutines.launch
 
 class ArticleViewModel : ViewModel() {
-    private val apiService = NewsApiService.Companion.create()
+    private val apiService = NewsApiService.create()
 
-    // Jika kuota habis, artikel & gambar tidak akan muncul.
+    // The API key is limited (once the limit has reached, no article will be displayed)
     private val apiKey = BuildConfig.ARTICLE_API_KEY
 
-    // State UI
+    // UI states
     var articles by mutableStateOf<List<Article>>(emptyList())
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
 
-    // Query ini akan otomatis dijalankan saat halaman dibuka.
-    // Menggunakan 'OR' agar mencari salah satu dari topik ini.
+    // keyword for auto search later
     var searchQuery by mutableStateOf("kesehatan mental")
-
     var currentPage by mutableIntStateOf(1)
     var sortBy by mutableStateOf("publishedAt")
 
     init {
-        // Fungsi ini otomatis jalan saat layar dibuka
+        // fetch articles right after the screen has opened
         fetchArticles()
     }
 
@@ -82,6 +80,6 @@ class ArticleViewModel : ViewModel() {
     fun onSortChange(newSort: String) {
         sortBy = newSort
         currentPage = 1
-        fetchArticles() // Refresh list dengan urutan baru
+        fetchArticles()
     }
 }

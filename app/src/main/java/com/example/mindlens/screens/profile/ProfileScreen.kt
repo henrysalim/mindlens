@@ -1,7 +1,5 @@
-package com.example.mindlens.screens.profile // Sesuaikan package
+package com.example.mindlens.screens.profile
 
-import android.graphics.BitmapFactory
-import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -21,18 +19,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.mindlens.model.UserProfile
+import com.example.mindlens.helpers.ImageUtils
 import com.example.mindlens.ui.*
 import com.example.mindlens.ui.components.element.CustomToast
 import com.example.mindlens.ui.components.profile.ProfileMenuItem
 import com.example.mindlens.ui.components.profile.ProfileStat
-import com.example.mindlens.viewModels.AuthViewModel
 import com.example.mindlens.viewModels.ProfileViewModel
 
 @Composable
@@ -43,10 +38,12 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     profileViewModel: ProfileViewModel
 ) {
+    // load user profile first
     LaunchedEffect(Unit) {
         profileViewModel.loadUserProfile()
     }
 
+    // show success update profile message after user update the profile
     val showSuccess by remember { profileViewModel.showSuccessMessage }
 
     Box(modifier = Modifier.fillMaxSize().background(TechBackground)) {
@@ -66,7 +63,7 @@ fun ProfileScreen(
                         .background(Brush.linearGradient(listOf(TechPrimary, Color(0xFF004E55))))
                 )
 
-                // Profile Card Melayang
+                // Floating Profile Card
                 Card(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -80,7 +77,7 @@ fun ProfileScreen(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Foto Profil
+                        // Profile pict
                         Box(
                             contentAlignment = Alignment.BottomEnd,
                             modifier = Modifier
@@ -90,11 +87,9 @@ fun ProfileScreen(
                             if (!profileViewModel.currentAvatarBase64.value.isNullOrEmpty()) {
                                 // Convert Base64 string to Bitmap for Display
                                 val cleanBase64 = profileViewModel.currentAvatarBase64.value!!
-                                val decodedBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
-                                val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
 
                                 Image(
-                                    bitmap = bitmap.asImageBitmap(),
+                                    bitmap = ImageUtils.base64ToBitmap(cleanBase64),
                                     contentDescription = "Avatar",
                                     modifier = Modifier.fillMaxSize().clip(CircleShape),
                                     contentScale = ContentScale.Crop
@@ -112,6 +107,8 @@ fun ProfileScreen(
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
+
+                        // display user's profile (name, bio, email)
                         Text(
                             profileViewModel.name.value,
                             style = MaterialTheme.typography.titleLarge,
@@ -135,7 +132,8 @@ fun ProfileScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Stats Row (Opsional - Biar Canggih)
+                        // Stats Row
+                        // TODO: FINISH THIS
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
@@ -150,7 +148,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 2. MENU OPTIONS
+            // MENU OPTIONS
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
                 Text(
                     "Account Settings",

@@ -1,7 +1,5 @@
 package com.example.mindlens.ui.components.article
 
-import android.graphics.BitmapFactory
-import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -18,12 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.mindlens.helpers.ImageUtils
 import com.example.mindlens.helpers.formatDate
 import com.example.mindlens.model.GetArticleComment
 import com.example.mindlens.ui.TechTextPrimary
@@ -41,12 +39,11 @@ fun CommentItem(comment: GetArticleComment) {
         ) {
             if (avatarBase64 != null) {
                 // convert image from Base64 to image
-                val decodedBytes = Base64.decode(avatarBase64, Base64.DEFAULT)
-                val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                val bitmap = ImageUtils.base64ToBitmap(avatarBase64)
 
                 // display the formatted image
                 Image(
-                    bitmap = bitmap.asImageBitmap(),
+                    bitmap = bitmap,
                     contentDescription = "Avatar",
                     modifier = Modifier.fillMaxSize().clip(CircleShape),
                     contentScale = ContentScale.Crop

@@ -35,7 +35,6 @@ import com.example.mindlens.ui.components.home.HomeHeader
 import com.example.mindlens.ui.components.home.MoodCheckInSection
 import com.example.mindlens.ui.components.home.RecentHistorySection
 import com.example.mindlens.ui.components.home.RecentScansHomeSection
-import com.example.mindlens.ui.components.home.RecommendedReadsSection
 import com.example.mindlens.ui.components.home.WeeklyChartSection
 import com.example.mindlens.viewModels.AuthViewModel
 import com.example.mindlens.viewModels.HomeUiEvent
@@ -63,6 +62,7 @@ fun HomeScreen(
     val fusedLocation = remember {
         LocationServices.getFusedLocationProviderClient(context)
     }
+
     val state by viewModel.uiState.collectAsState()
     val userName = remember { authViewModel.getUserName() }
 
@@ -104,6 +104,13 @@ fun HomeScreen(
             }
             onGrantedCallback = null
         }
+    // Local input state
+    var showDiaryDialog by remember { mutableStateOf(false) }
+    var selectedMoodForEntry by remember { mutableStateOf("") }
+    var selectedColorForEntry by remember { mutableStateOf(Color.Gray) }
+    var diaryTitleText by remember { mutableStateOf("") }
+    var diaryInputText by remember { mutableStateOf("") }
+    var showSuccessToast by remember { mutableStateOf(false) }
 
     // Auto refresh data (Diary + Scans) saat layar aktif
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -112,6 +119,8 @@ fun HomeScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 // Memanggil fungsi baru di ViewModel
                 viewModel.loadAllData()
+                // reload data from database every time this page opened (better use caching if possible...but don't have any time -> for next developer 🔥)
+                viewModel.loadEntries()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -121,6 +130,7 @@ fun HomeScreen(
     }
 
     // LOCATION HELPER
+    // Request location
     fun requestLocationOptional(
         fusedLocation: FusedLocationProviderClient,
         context: Context,
@@ -148,17 +158,10 @@ fun HomeScreen(
                 }
             }
         } else {
+            // return null if permission not granted
             onLocation(null)
         }
     }
-
-    // State Input Lokal
-    var showDiaryDialog by remember { mutableStateOf(false) }
-    var selectedMoodForEntry by remember { mutableStateOf("") }
-    var selectedColorForEntry by remember { mutableStateOf(Color.Gray) }
-    var diaryTitleText by remember { mutableStateOf("") }
-    var diaryInputText by remember { mutableStateOf("") }
-    var showSuccessToast by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
@@ -185,8 +188,10 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 100.dp)
         ) {
+            // header
             HomeHeader(onPanicClick = onNavigateToPanic, username = userName)
 
+            // to submit diary
             MoodCheckInSection(
                 onMoodSelected = { mood, color ->
                     selectedMoodForEntry = mood
@@ -195,13 +200,13 @@ fun HomeScreen(
                 }
             )
 
-            // CHART
+            // Mood Chart
             WeeklyChartSection(
                 weeklyData = state.weeklyStats,
                 averageMoodStatus = state.averageMood
             )
 
-            // SCAN SECTION (Updated) - Menampilkan data real dari state
+            // displaying recent scan
             RecentScansHomeSection(
                 scans = state.recentScans,
                 onScanClick = onNavigateToScan
@@ -209,13 +214,14 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // exercises
             DailyPhysioSection(
                 onItemClick = { type ->
                     if (type == "Breathing") onNavigateToBreathing() else onNavigateToActivity(type)
                 }
             )
 
-            // LIST DIARY TERBARU
+            // Recent diary
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = TechPrimary)
@@ -227,10 +233,9 @@ fun HomeScreen(
                     onItemClick = { entry -> onNavigateToDetail(entry) }
                 )
             }
-            RecommendedReadsSection()
         }
 
-        // --- DIALOG INPUT DIARY ---
+        // Input diary dialogue
         if (showDiaryDialog) {
             AlertDialog(
                 onDismissRequest = { showDiaryDialog = false },
@@ -274,6 +279,7 @@ fun HomeScreen(
                             if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
                                 == PackageManager.PERMISSION_GRANTED
                             ) {
+                                // get location & save
                                 requestLocationOptional(fusedLocation, context) { location ->
                                     viewModel.saveDiaryEntry(
                                         title = diaryTitleText,
@@ -295,7 +301,7 @@ fun HomeScreen(
                                 )
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = TechPrimary)
+                        colors = ButtonDefaults.buttonColors(containerColor = TechPrimary, contentColor = Color.White)
                     ) { Text("Save") }
                 },
                 dismissButton = {
@@ -304,6 +310,7 @@ fun HomeScreen(
             )
         }
 
+        // toast to display messages
         CustomToast(
             visible = showSuccessToast,
             message = "Diary saved & Analytics updated!",

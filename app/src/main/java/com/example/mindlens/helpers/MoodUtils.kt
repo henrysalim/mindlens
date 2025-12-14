@@ -4,7 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.example.mindlens.ui.* // Sesuaikan import warna theme kamu
+import com.example.mindlens.ui.*
 
 // Mapping Mood String ke Data Visual & Analitik
 enum class MoodType(val label: String, val score: Float, val color: Color, val icon: ImageVector) {

@@ -1,8 +1,6 @@
 package com.example.mindlens.screens.profile
 
-import android.graphics.BitmapFactory
 import android.net.Uri
-import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -12,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,20 +18,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.mindlens.helpers.ImageUtils
 import com.example.mindlens.ui.*
 import com.example.mindlens.ui.components.input.CustomTextField
 import com.example.mindlens.ui.components.element.CustomToast
-import com.example.mindlens.ui.components.element.SimpleTopBar
 import com.example.mindlens.viewModels.ProfileViewModel
-import kotlinx.coroutines.launch
 
-// ----------------- EDIT PROFILE SCREEN -----------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
@@ -41,12 +37,12 @@ fun EditProfileScreen(
 ) {
     val context = LocalContext.current
 
+    // image state
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
     // Toast States
     var toastVisible by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("") }
-    var isToastError by remember { mutableStateOf(false) }
 
     // Image Picker Launcher
     val launcher = rememberLauncherForActivityResult(
@@ -56,7 +52,18 @@ fun EditProfileScreen(
     }
 
     Scaffold(
-        topBar = { SimpleTopBar("Edit Profile", onBack) }
+        topBar = {
+            // the top bar
+            TopAppBar(
+                title = { Text("Edit Profile", fontWeight = FontWeight.Bold, color = TechTextPrimary) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TechTextPrimary)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = TechBackground)
+            )
+        },
     ) { padding ->
         // Show Loading Spinner while fetching data
         if (profileViewModel.isLoading.value) {
@@ -91,21 +98,19 @@ fun EditProfileScreen(
                             contentScale = ContentScale.Crop
                         )
                     } else if (!profileViewModel.currentAvatarBase64.value.isNullOrEmpty()) {
-                        // Convert Base64 string to Bitmap for Display
                         val cleanBase64 = profileViewModel.currentAvatarBase64.value!!
-                        val decodedBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
-                        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
 
                         Image(
-                            bitmap = bitmap.asImageBitmap(),
+                            bitmap = ImageUtils.base64ToBitmap(cleanBase64),
                             contentDescription = "Saved Avatar",
                             modifier = Modifier.fillMaxSize().clip(CircleShape),
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        val username  = profileViewModel.name.value
+                        val username = profileViewModel.name.value
                         AsyncImage(
-                            model = profileViewModel.googleAvatarUrl.value ?: "https://ui-avatars.com/api/?name=${username}&background=random&color=fff",
+                            model = profileViewModel.googleAvatarUrl.value
+                                ?: "https://ui-avatars.com/api/?name=${username}&background=random&color=fff",
                             contentDescription = "Avatar",
                             modifier = Modifier.fillMaxSize().clip(CircleShape),
                             contentScale = ContentScale.Crop
@@ -167,7 +172,7 @@ fun EditProfileScreen(
                         )
                     },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = TechPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = TechPrimary, contentColor = Color.White),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Save Changes", fontWeight = FontWeight.Bold)
@@ -175,6 +180,7 @@ fun EditProfileScreen(
             }
         }
 
+        // toast to display messages
         CustomToast(
             visible = toastVisible,
             message = toastMessage,

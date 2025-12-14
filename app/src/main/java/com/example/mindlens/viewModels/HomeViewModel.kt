@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.mindlens.data.HomeUiState
 import com.example.mindlens.data.WeeklyData
+import com.example.mindlens.helpers.getLoggedInUserId
 import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.repositories.DiaryRepository
 import com.example.mindlens.repositories.ScanRepository
@@ -46,7 +47,6 @@ class HomeViewModel(
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
-
     private val _uiEvent = Channel<HomeUiEvent>()
     val uiEvent = _uiEvent.receiveAsFlow()
 
@@ -56,6 +56,7 @@ class HomeViewModel(
 
     // --- FUNGSI UTAMA LOAD DATA (Diary + Scan) ---
     fun loadAllData() {
+        // load data required in home screen
         loadEntries()
         loadRecentScans()
     }
@@ -159,6 +160,7 @@ class HomeViewModel(
     }
 
     fun saveDiaryEntry(title: String, content: String, mood: String, colorInt: Int, latitude: Double?, longitude: Double?) {
+        // validation
         if (content.isBlank()) {
             sendEvent(HomeUiEvent.ShowMessage("Isi diary tidak boleh kosong"))
             return
@@ -331,6 +333,21 @@ class HomeViewModel(
             avg >= 0.4f -> "Netral / Biasa 😐"
             avg >= 0.2f -> "Kurang Semangat ☁"
             else -> "Sedang Sedih 😢"
+        }
+    }
+
+    // DRAG GRAB
+    fun updateDiaryLocation(
+        diaryId: String,
+        lat: Double,
+        lng: Double
+    ) {
+        viewModelScope.launch {
+            repository.updateDiaryLocation(
+                diaryId = diaryId,
+                latitude = lat,
+                longitude = lng
+            )
         }
     }
 

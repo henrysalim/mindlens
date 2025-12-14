@@ -34,12 +34,13 @@ fun DiaryDetailScreen(
     entry: DiaryEntry,
     onBackClick: () -> Unit
 ) {
-    // Konversi Int color dari database kembali ke object Color Compose
+    // Convert Long-formatted color from database back to Color compose
     val moodColor = Color(entry.color)
 
     Scaffold(
         containerColor = TechBackground,
         topBar = {
+            // top bar
             TopAppBar(
                 title = {
                     Text(
@@ -67,11 +68,11 @@ fun DiaryDetailScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // --- 1. Mood Header Banner ---
+            // Mood Header Banner
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp) // Sedikit dipertinggi agar lebih proporsional
+                    .height(200.dp)
                     .background(
                         Brush.verticalGradient(
                             listOf(moodColor.copy(alpha = 0.7f), TechBackground)
@@ -107,10 +108,10 @@ fun DiaryDetailScreen(
                 }
             }
 
-            // --- 2. Details Content ---
+            // Details Content
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
 
-                // Judul Diary
+                // Diary title
                 Text(
                     text = entry.title,
                     style = MaterialTheme.typography.headlineSmall.copy(
@@ -122,7 +123,7 @@ fun DiaryDetailScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Baris Tanggal (Menggunakan Helper baru)
+                // Diary date
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -137,7 +138,7 @@ fun DiaryDetailScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = formatDate(entry.createdAt), // Memanggil fungsi helper baru
+                        text = formatDate(entry.createdAt),
                         style = MaterialTheme.typography.labelMedium,
                         color = TechTextSecondary
                     )
@@ -145,7 +146,7 @@ fun DiaryDetailScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Divider Halus
+                // Divider
                 HorizontalDivider(
                     color = TechTextSecondary.copy(alpha = 0.15f),
                     thickness = 1.dp
@@ -153,7 +154,7 @@ fun DiaryDetailScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Isi Diary (Content)
+                // Diary Content
                 Card(
                     colors = CardDefaults.cardColors(containerColor = TechSurface),
                     shape = RoundedCornerShape(16.dp),
@@ -166,14 +167,14 @@ fun DiaryDetailScreen(
                         Text(
                             text = entry.content,
                             style = MaterialTheme.typography.bodyLarge.copy(
-                                lineHeight = 28.sp // Line height lebih lega agar mudah dibaca
+                                lineHeight = 28.sp
                             ),
                             color = TechTextPrimary
                         )
                     }
                 }
 
-                // Spacer bawah agar scroll tidak mentok
+                // Bottom spacer
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }

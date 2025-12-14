@@ -1,7 +1,6 @@
 package com.example.mindlens.screens.article
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,16 +23,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-// Pastikan pakai Coil yang sesuai (jika merah, coba ganti coil3 -> coil)
 import coil.compose.AsyncImage
 import com.example.mindlens.model.Article
-// Hapus import ArticleComment yang lama karena kita buat di bawah
 import com.example.mindlens.ui.*
 import com.example.mindlens.ui.components.article.CommentItem
 import com.example.mindlens.ui.components.element.CustomToast
 import com.example.mindlens.viewModels.ArticleCommentsViewModel
+import androidx.core.net.toUri
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class) // for using TopAppBar
 @Composable
 fun ArticleDetailScreen(
     article: Article,
@@ -60,8 +58,10 @@ fun ArticleDetailScreen(
         viewModel.loadComments(article.url)
     }
 
+    // the view..
     Scaffold(
         topBar = {
+            // top bar to display back button and page title
             TopAppBar(
                 title = { Text("Article Detail", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -84,9 +84,9 @@ fun ArticleDetailScreen(
             ) {
                 // Image and title
                 item {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     AsyncImage(
-                        model = article.image ?: "https://via.placeholder.com/400",
+                        model = article.image ?: "https://via.placeholder.com/400" /* if image from API is null*/,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -111,6 +111,8 @@ fun ArticleDetailScreen(
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
+
+                    // article title
                     Text(
                         text = article.title,
                         style = MaterialTheme.typography.headlineSmall,
@@ -118,9 +120,13 @@ fun ArticleDetailScreen(
                         color = TechTextPrimary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    // article published at date
                     Text(text = article.publishedAt.take(10), color = TechTextSecondary, fontSize = 14.sp)
 
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    // divider
                     HorizontalDivider(color = Color.LightGray)
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -131,7 +137,10 @@ fun ArticleDetailScreen(
                         color = TechTextPrimary,
                         lineHeight = 24.sp
                     )
+
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    // main article content
                     Text(
                         text = article.content ?: "",
                         style = MaterialTheme.typography.bodyMedium,
@@ -143,11 +152,11 @@ fun ArticleDetailScreen(
                     // Open in browser
                     Button(
                         onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(article.url))
+                            val intent = Intent(Intent.ACTION_VIEW, article.url.toUri())
                             context.startActivity(intent)
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = TechPrimary),
+                        colors = ButtonDefaults.buttonColors(containerColor = TechPrimary, contentColor = Color.White),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.OpenInBrowser, null)
@@ -167,6 +176,7 @@ fun ArticleDetailScreen(
 
                 // Comments list
                 items(commentsList) { comment ->
+                    // call CommentItem component to display each comment
                     CommentItem(comment)
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -184,6 +194,7 @@ fun ArticleDetailScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // comment input field
                     OutlinedTextField(
                         value = commentText,
                         onValueChange = { commentText = it },
@@ -236,6 +247,7 @@ fun ArticleDetailScreen(
             }
         }
 
+        // to display toast after user submit comment
         Box(
             modifier = Modifier
                 .fillMaxSize()

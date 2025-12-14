@@ -472,7 +472,7 @@ fun DepressionClassifierScreen() {
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = TechPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = TechPrimary, contentColor = Color.White),
                 enabled = (selectedImageUri != null || capturedBitmap != null) && !isAnalyzing
             ) {
                 if (isAnalyzing) {
