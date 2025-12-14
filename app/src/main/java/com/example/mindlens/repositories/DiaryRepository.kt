@@ -1,6 +1,6 @@
 package com.example.mindlens.repositories
 
-import com.example.mindlens.data.DiaryEntry
+import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.supabase.DatabaseConnection // Pastikan import DatabaseConnection
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
