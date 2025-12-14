@@ -10,10 +10,6 @@ import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 import java.util.UUID
 
 class ArticleCommentsViewModel: ViewModel() {
@@ -54,7 +50,7 @@ class ArticleCommentsViewModel: ViewModel() {
 
                 val timestamp = java.time.Instant.now().toString()
 
-                // 2. Create the object
+                // Create the object
                 val newComment = PostArticleComment(
                     id = UUID.randomUUID().toString(),
                     comment = commentText,
@@ -63,10 +59,10 @@ class ArticleCommentsViewModel: ViewModel() {
                     createdAt = timestamp // Let Supabase handle the timestamp
                 )
 
-                // 3. Send to Supabase
+                // Send to Supabase
                 repository.postComment(newComment)
 
-                // 4. Refresh the list locally to show the new comment immediately
+                // Refresh the list locally to show the new comment immediately
                 loadComments(newsUrl)
 
                 onSuccess()

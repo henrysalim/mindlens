@@ -46,10 +46,6 @@ import com.example.mindlens.viewModels.AuthState
 import com.example.mindlens.viewModels.AuthViewModel
 import kotlinx.coroutines.launch
 
-fun onLoginClick(username: String, password: String) {
-
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NativeLoginScreen(
@@ -80,6 +76,7 @@ fun NativeLoginScreen(
 
     Scaffold(
         topBar = {
+            // the top bar
             CenterAlignedTopAppBar(
                 title = {
                     Text(
@@ -175,7 +172,6 @@ fun NativeLoginScreen(
                                 scope.launch {
                                     kotlinx.coroutines.delay(2000) // Wait 2s
                                     navController.navigate(Routes.MainApp) {
-                                        // Optional: Prevent going back to register
                                         popUpTo(Routes.NativeLogin) { inclusive = true }
                                     }
                                 }
@@ -192,7 +188,7 @@ fun NativeLoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = if(isLoading) false else true,
+                enabled = if(isLoading) false else true ,
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Black,
@@ -200,8 +196,10 @@ fun NativeLoginScreen(
                 )
             ) {
                 if (isLoading) {
+                    // displya circular indicator if still loading
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
+                    // display text if not in loading state
                     Text("Log In")
                 }
             }
@@ -209,6 +207,7 @@ fun NativeLoginScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // show register text if the user wants to register new account
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -227,6 +226,9 @@ fun NativeLoginScreen(
                             popUpTo(Routes.NativeLogin) { inclusive = true }
                         }
                     },
+                    colors = ButtonDefaults.buttonColors(
+                        contentColor = Color.White
+                    ),
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
@@ -237,7 +239,7 @@ fun NativeLoginScreen(
                     )
                 }
             }
-                // This sits on top of the screen (z-index)
+            // custom toast to display message
             CustomToast(
                 visible = showToast,
                 message = toastMessage,

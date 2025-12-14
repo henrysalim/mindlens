@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.mindlens.data.HomeUiState
 import com.example.mindlens.data.WeeklyData
+import com.example.mindlens.helpers.getLoggedInUserId
 import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.repositories.DiaryRepository
 import kotlinx.coroutines.channels.Channel
@@ -33,14 +34,14 @@ sealed class HomeUiEvent {
 }
 
 class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
-
+    // ui states
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
-
     private val _uiEvent = Channel<HomeUiEvent>()
     val uiEvent = _uiEvent.receiveAsFlow()
 
     init {
+        // load data required in home screen
         loadEntries()
     }
 
@@ -48,10 +49,9 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                val rawEntries = repository.getMyEntries()
+                val rawEntries = repository.getDiaryEntries()
 
-                // --- PERBAIKAN 1: SORTING DESCENDING (Terbaru Paling Atas) ---
-                // Kita sort berdasarkan string ISO tanggalnya
+                // sort data descending based on the created at date
                 val sortedEntries = rawEntries.sortedByDescending { it.createdAt }
 
                 val weeklyData = calculateWeeklyStats(sortedEntries)
@@ -59,7 +59,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
 
                 _uiState.update {
                     it.copy(
-                        entries = sortedEntries, // Gunakan list yang sudah di-sort
+                        entries = sortedEntries,
                         weeklyStats = weeklyData,
                         averageMood = avgMoodString,
                         isLoading = false
@@ -102,6 +102,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
     }
 
     fun saveDiaryEntry(title: String, content: String, mood: String, colorInt: Int, latitude: Double?, longitude: Double?) {
+        // validation
         if (content.isBlank()) {
             sendEvent(HomeUiEvent.ShowMessage("Isi diary tidak boleh kosong"))
             return
@@ -110,7 +111,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val currentUserId = repository.getCurrentUserId()
+                val currentUserId = getLoggedInUserId()
                     ?: throw Exception("User session not found. Please login again.")
 
                 val now = Date()
@@ -174,14 +175,11 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
     private fun calculateWeeklyStats(entries: List<DiaryEntry>): List<WeeklyData> {
         val stats = mutableListOf<WeeklyData>()
 
-        // Formatter standar yang akan kita gunakan setelah string "dibersihkan"
-        // Kita paksa semua string jadi format ini nanti
         val standardParser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
         standardParser.timeZone = TimeZone.getTimeZone("UTC")
 
         val dayLabelFormatter = SimpleDateFormat("EEE", Locale.getDefault())
 
-        val calendar = Calendar.getInstance()
         val loopCal = Calendar.getInstance()
         loopCal.add(Calendar.DAY_OF_YEAR, -6)
 
@@ -189,7 +187,6 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
             val dateBeingChecked = loopCal.time
 
             val entriesForDay = entries.filter { entry ->
-                // PANGGIL FUNGSI PEMBERSIH DI SINI
                 val normalizedString = normalizeDateString(entry.createdAt)
 
                 try {
@@ -265,7 +262,6 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         return clean // Kembalikan apa adanya jika format aneh (biar ditangani try-catch di atas)
     }
 
-    // Helper isSameDay tetap sama
     private fun isSameDay(date1: Date, date2: Date): Boolean {
         val cal1 = Calendar.getInstance().apply { time = date1 }
         val cal2 = Calendar.getInstance().apply { time = date2 }

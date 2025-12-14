@@ -10,14 +10,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel // Import ini
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.mindlens.navigations.Screen
-import com.example.mindlens.viewModels.HomeViewModel // Import ViewModel
+import com.example.mindlens.viewModels.HomeViewModel
 import com.example.mindlens.ui.PrimaryGreen
 import com.example.mindlens.ui.TextBlack
 import com.example.mindlens.model.Article
@@ -124,7 +124,7 @@ fun MainScreen(
             // Psychologist Map Screen
             composable(Screen.PsychologistMap.route) {
                 PsychologistMapScreen(
-                    viewModel = sharedViewModel // <-- Oper ViewModel yang sama, jadi dia tahu kalau ada data baru!
+                    viewModel = sharedViewModel
                 )
             }
 

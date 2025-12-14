@@ -1,8 +1,5 @@
 package com.example.mindlens.screens.article
 
-import android.util.Log
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,18 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.example.mindlens.viewModels.ArticleViewModel
 import com.example.mindlens.model.Article
 import com.example.mindlens.ui.*
@@ -40,8 +31,10 @@ fun ArticleScreen(
 ) {
     val focusManager = LocalFocusManager.current
 
+    // the view
     Scaffold(
         topBar = {
+            // top bar to display back button and page title
             TopAppBar(
                 title = { Text("Mental Health News", fontWeight = FontWeight.Bold, color = TechTextPrimary) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = TechBackground)
@@ -59,6 +52,7 @@ fun ArticleScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
+                // search field
                 OutlinedTextField(
                     value = viewModel.searchQuery,
                     onValueChange = { viewModel.onSearchQueryChange(it) },
@@ -82,6 +76,7 @@ fun ArticleScreen(
             }
 
             item {
+                // options to filter the article
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = viewModel.sortBy == "publishedAt",
@@ -106,22 +101,26 @@ fun ArticleScreen(
 
             if (viewModel.isLoading) {
                 item {
+                    // if the article still loading, display circular progress indicator
                     Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = TechPrimary)
                     }
                 }
             } else if (viewModel.errorMessage != null) {
                 item {
+                    // if any error ocurrs, display the error message
                     Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
                         Text(text = viewModel.errorMessage ?: "Error", color = Color.Red)
                     }
                 }
             } else {
+                // display the article item if the loading is success
                 items(viewModel.articles) { article ->
                     ArticleItem(article, onClick = { onArticleClick(article) })
                 }
             }
 
+            // pagination button
             item {
                 if (viewModel.articles.isNotEmpty()) {
                     Row(

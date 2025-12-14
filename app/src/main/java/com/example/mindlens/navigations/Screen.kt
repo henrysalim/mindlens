@@ -3,14 +3,14 @@ package com.example.mindlens.navigations
 import android.net.Uri
 
 sealed class Screen(val route: String) {
-    // --- Bottom Bar Tabs ---
+    // Bottom Bar Tabs
     object Home : Screen("home")
     object PsychologistMap : Screen("psychologist_map")
     object DepressionDetection : Screen("depression_detection")
     object Articles : Screen("articles")
     object Profile : Screen("profile")
 
-    // --- Sub-Screens (Detail Pages) ---
+    // Sub-Screens
     object ArticleDetail : Screen("article_detail")
 
     // Activity & Video
@@ -24,13 +24,13 @@ sealed class Screen(val route: String) {
     object BreathingExercise : Screen("breathing_exercise")
     object ExerciseGuide : Screen("exercise_guide/{exerciseId}")
 
-    // --- Diary Features (INI YANG PENTING UNTUK MOODSCREEN) ---
+    // Diary Features
     object DiaryHistory : Screen("diary_history") // Rute untuk See All
     object DiaryDetail : Screen("diary_detail/{entry}") { // Rute untuk Detail
         fun createRoute(encodedJson: String) = "diary_detail/$encodedJson"
     }
 
-    // --- Profile Settings ---
+    // Profile Settings
     object EditProfile : Screen("edit_profile")
     object ChangePassword : Screen("change_password")
     object AboutApp : Screen("about_app")

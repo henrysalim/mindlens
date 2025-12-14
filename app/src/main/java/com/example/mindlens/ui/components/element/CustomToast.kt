@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error // Icon for error
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -25,9 +25,10 @@ import kotlinx.coroutines.delay
 fun CustomToast(
     visible: Boolean,
     message: String,
-    isError: Boolean = false, // New parameter to toggle style
+    isError: Boolean = false,
     onDismiss: () -> Unit
 ) {
+    // delay for 2s
     LaunchedEffect(visible) {
         if (visible) {
             delay(2000)
@@ -47,7 +48,7 @@ fun CustomToast(
             Row(
                 modifier = Modifier
                     .background(
-                        color = if (isError) Color(0xFFEF5350) else Color(0xFF4CAF50), // Red if error, Green if success
+                        color = if (isError) Color(0xFFEF5350) else Color(0xFF4CAF50),
                         shape = RoundedCornerShape(24.dp)
                     )
                     .padding(horizontal = 16.dp, vertical = 10.dp),
