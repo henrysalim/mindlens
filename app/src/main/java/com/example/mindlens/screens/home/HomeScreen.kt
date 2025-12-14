@@ -27,7 +27,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mindlens.data.HomeScanItem
 import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.ui.*
 import com.example.mindlens.ui.components.element.CustomToast
@@ -46,12 +45,6 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-
-// TODO: perlu diganti dengan data riil
-val dummyHomeScans = listOf(
-    HomeScanItem("Normal / Sehat", "Hari ini, 08:30", 92, false),
-    HomeScanItem("Indikasi Stress", "Kemarin, 20:15", 74, true)
-)
 
 // Main home screen composable
 @Composable
@@ -73,6 +66,44 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
     val userName = remember { authViewModel.getUserName() }
 
+    /// REQUEST LOCATION
+    var onGrantedCallback by remember { mutableStateOf<((Location) -> Unit)?>(null) }
+    var onDeniedCallback by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    fusedLocation.lastLocation.addOnSuccessListener { loc ->
+                        if (loc != null) {
+                            onGrantedCallback?.invoke(loc)
+                        } else {
+                            val locationRequest = LocationRequest.Builder(
+                                Priority.PRIORITY_HIGH_ACCURACY,
+                                1000L
+                            ).setMaxUpdates(1).build()
+
+                            val callback = object : LocationCallback() {
+                                override fun onLocationResult(result: LocationResult) {
+                                    result.lastLocation?.let { onGrantedCallback?.invoke(it) }
+                                    fusedLocation.removeLocationUpdates(this)
+                                }
+                            }
+                            fusedLocation.requestLocationUpdates(locationRequest, callback, null)
+                        }
+                    }
+                } else {
+                    onDeniedCallback?.invoke()
+                }
+            } else {
+                onDeniedCallback?.invoke()
+            }
+            onGrantedCallback = null
+        }
     // Local input state
     var showDiaryDialog by remember { mutableStateOf(false) }
     var selectedMoodForEntry by remember { mutableStateOf("") }
@@ -81,11 +112,13 @@ fun HomeScreen(
     var diaryInputText by remember { mutableStateOf("") }
     var showSuccessToast by remember { mutableStateOf(false) }
 
-    // Auto refresh
+    // Auto refresh data (Diary + Scans) saat layar aktif
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                // Memanggil fungsi baru di ViewModel
+                viewModel.loadAllData()
                 // reload data from database every time this page opened (better use caching if possible...but don't have any time -> for next developer 🔥)
                 viewModel.loadEntries()
             }
@@ -96,6 +129,7 @@ fun HomeScreen(
         }
     }
 
+    // LOCATION HELPER
     // Request location
     fun requestLocationOptional(
         fusedLocation: FusedLocationProviderClient,
@@ -174,7 +208,7 @@ fun HomeScreen(
 
             // displaying recent scan
             RecentScansHomeSection(
-                scans = dummyHomeScans,
+                scans = state.recentScans,
                 onScanClick = onNavigateToScan
             )
 
