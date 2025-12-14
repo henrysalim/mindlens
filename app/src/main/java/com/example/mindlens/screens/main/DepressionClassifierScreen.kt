@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.mindlens.ui.*
 import com.example.mindlens.helpers.DepressionClassifier
+import com.example.mindlens.repositories.ScanRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -67,6 +68,8 @@ data class ScanHistoryItem(
 fun DepressionClassifierScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val repository = remember { ScanRepository()}
 
     // --- STATE UI ---
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
