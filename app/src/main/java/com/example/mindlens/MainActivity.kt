@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// define routes
 object Routes {
     const val Splash = "splash"
     const val Onboarding = "onboarding"

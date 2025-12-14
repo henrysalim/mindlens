@@ -2,6 +2,7 @@ package com.example.mindlens.data
 
 import com.example.mindlens.model.DiaryEntry
 
+// For storing various states in home screen
 data class HomeUiState(
     val entries: List<DiaryEntry> = emptyList(),
     val weeklyStats: List<WeeklyData> = emptyList(),

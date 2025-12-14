@@ -1,12 +1,14 @@
 package com.example.mindlens.repositories
 
 import android.util.Log
+import com.example.mindlens.helpers.getLoggedInUserId
 import com.example.mindlens.model.UserProfile
 import com.example.mindlens.supabase.DatabaseConnection
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 
 class ProfileRepository {
+    // get user's profile
     suspend fun getProfile(): UserProfile? {
         val userId = DatabaseConnection.supabase.auth.currentUserOrNull()?.id ?: return null
 
@@ -24,10 +26,11 @@ class ProfileRepository {
         }
     }
 
+    // update the user's profile
     suspend fun updateProfile(name: String, bio: String, base64Image: String?) {
-        val userId = DatabaseConnection.supabase.auth.currentUserOrNull()?.id ?: return
+        val userId = getLoggedInUserId() ?: return
 
-        val updateData = mutableMapOf<String, String>(
+        val updateData = mutableMapOf(
             "full_name" to name,
             "bio" to bio
         )
