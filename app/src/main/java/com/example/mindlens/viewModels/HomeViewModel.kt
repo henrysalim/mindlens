@@ -34,6 +34,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import java.time.LocalDate
+import java.time.format.TextStyle
 
 sealed class HomeUiEvent {
     object SaveSuccess : HomeUiEvent()
@@ -42,7 +44,7 @@ sealed class HomeUiEvent {
 
 class HomeViewModel(
     private val repository: DiaryRepository,
-    private val scanRepository: ScanRepository // Tambahan untuk Scan
+    private val scanRepository: ScanRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -51,12 +53,11 @@ class HomeViewModel(
     val uiEvent = _uiEvent.receiveAsFlow()
 
     init {
-        loadAllData() // Panggil loadAllData saat ViewModel dibuat
+        loadAllData()
     }
 
-    // --- FUNGSI UTAMA LOAD DATA (Diary + Scan) ---
+    // --- FUNGSI UTAMA LOAD DATA ---
     fun loadAllData() {
-        // load data required in home screen
         loadEntries()
         loadRecentScans()
     }
@@ -65,12 +66,10 @@ class HomeViewModel(
     fun loadRecentScans() {
         viewModelScope.launch {
             try {
-                // Ambil data scan dari Supabase via Repository
                 val scans = withContext(Dispatchers.IO) {
                     scanRepository.getMyScans()
                 }
 
-                // Format ke ScanHistoryItem (UI Model) & Ambil 3 teratas
                 val formattedScans = scans.take(3).map { e ->
                     ScanHistoryItem(
                         id = e.id ?: "",
@@ -84,13 +83,11 @@ class HomeViewModel(
 
                 _uiState.update { it.copy(recentScans = formattedScans) }
             } catch (e: Exception) {
-                // Error silent agar tidak mengganggu flow utama Diary
                 e.printStackTrace()
             }
         }
     }
 
-    // Helper format tanggal Scan (menggunakan java.time agar lebih robust terhadap ISO 8601)
     private fun formatScanDate(createdAt: String?): String {
         if (createdAt.isNullOrBlank()) return "-"
         val outFmt = DateTimeFormatter.ofPattern("dd MMM, HH:mm", Locale.getDefault())
@@ -102,14 +99,16 @@ class HomeViewModel(
         }
     }
 
-    // --- LOGIKA DIARY (YANG SUDAH ADA) ---
+    // --- LOGIKA DIARY ---
     fun loadEntries() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                val rawEntries = withContext(Dispatchers.IO) { repository.getMyEntries() }
+                // Tambahkan withContext(Dispatchers.IO) agar load database berjalan di background thread
+                val rawEntries = withContext(Dispatchers.IO) {
+                    repository.getDiaryEntries()
+                }
 
-                // Sorting Descending (Terbaru Paling Atas)
                 val sortedEntries = rawEntries.sortedByDescending { it.createdAt }
 
                 val weeklyData = calculateWeeklyStats(sortedEntries)
@@ -136,7 +135,7 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 withContext(Dispatchers.IO) { repository.updateDiaryEntry(entry) }
-                loadEntries() // Refresh list
+                loadEntries()
                 sendEvent(HomeUiEvent.SaveSuccess)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
@@ -150,7 +149,7 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 withContext(Dispatchers.IO) { repository.deleteDiaryEntry(id) }
-                loadEntries() // Refresh list
+                loadEntries()
                 sendEvent(HomeUiEvent.ShowMessage("Diary berhasil dihapus"))
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
@@ -160,7 +159,6 @@ class HomeViewModel(
     }
 
     fun saveDiaryEntry(title: String, content: String, mood: String, colorInt: Int, latitude: Double?, longitude: Double?) {
-        // validation
         if (content.isBlank()) {
             sendEvent(HomeUiEvent.ShowMessage("Isi diary tidak boleh kosong"))
             return
@@ -169,7 +167,10 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val currentUserId = withContext(Dispatchers.IO) { repository.getCurrentUserId() }
+                // --- PERBAIKAN DI SINI ---
+                // Tambahkan Elvis operator (?:) untuk menangani null.
+                // Jika getLoggedInUserId() null, throw Exception agar masuk ke blok catch.
+                val currentUserId = getLoggedInUserId()
                     ?: throw Exception("User session not found. Please login again.")
 
                 val now = Date()
@@ -195,6 +196,7 @@ class HomeViewModel(
                     null to null
                 }
 
+                // currentUserId sekarang sudah pasti String (bukan null)
                 val newEntry = DiaryEntry(
                     id = generatedId,
                     userId = currentUserId,
@@ -207,7 +209,11 @@ class HomeViewModel(
                     longitude = finalLng
                 )
 
-                withContext(Dispatchers.IO) { repository.createDiaryEntry(newEntry) }
+                // Gunakan withContext untuk operasi database insert
+                withContext(Dispatchers.IO) {
+                    repository.createDiaryEntry(newEntry)
+                }
+
                 loadEntries()
                 sendEvent(HomeUiEvent.SaveSuccess)
 
@@ -218,74 +224,65 @@ class HomeViewModel(
         }
     }
 
+    // ... (Fungsi Helper Statistik tetap sama) ...
+
     private fun calculateWeeklyStats(entries: List<DiaryEntry>): List<WeeklyData> {
         val stats = mutableListOf<WeeklyData>()
 
-        val standardParser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
-        standardParser.timeZone = TimeZone.getTimeZone("UTC")
+        // 1. Dapatkan Zona Waktu HP User (agar grafik sesuai hari user saat ini)
+        val zoneId = ZoneId.systemDefault()
+        val today = LocalDate.now(zoneId)
 
-        val dayLabelFormatter = SimpleDateFormat("EEE", Locale.getDefault())
+        // 2. Loop 7 hari ke belakang (dari H-6 sampai Hari Ini)
+        // Kita gunakan range 6 downTo 0 agar urutannya: H-6, H-5 ... Hari Ini
+        for (i in 6 downTo 0) {
+            val targetDate = today.minusDays(i.toLong())
 
-        val loopCal = Calendar.getInstance()
-        loopCal.add(Calendar.DAY_OF_YEAR, -6)
-
-        for (i in 0..6) {
-            val dateBeingChecked = loopCal.time
-
+            // 3. Filter entry yang tanggalnya SAMA dengan targetDate
             val entriesForDay = entries.filter { entry ->
-                val normalizedString = normalizeDateString(entry.createdAt)
                 try {
-                    val entryDate = standardParser.parse(normalizedString)
-                    if (entryDate != null) {
-                        isSameDay(entryDate, dateBeingChecked)
-                    } else false
+                    // Parsing ISO-8601 string langsung ke Instant (Menangani UTC, Z, Microseconds otomatis)
+                    val entryInstant = Instant.parse(entry.createdAt)
+                    // Konversi ke LocalDate sesuai Zona Waktu User
+                    val entryDate = entryInstant.atZone(zoneId).toLocalDate()
+
+                    // Bandingkan apakah harinya sama
+                    entryDate.isEqual(targetDate)
                 } catch (e: Exception) {
+                    // Jika format tanggal rusak, skip data ini
                     false
                 }
             }
 
+            // 4. Format Nama Hari (Sen, Sel, Rab...)
+            val dayLabel = targetDate.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+
+            // 5. Hitung Skor Rata-rata
             if (entriesForDay.isNotEmpty()) {
                 val totalScore = entriesForDay.map { getMoodScore(it.mood) }.sum()
                 val avgScore = totalScore / entriesForDay.size
-
-                stats.add(WeeklyData(
-                    day = dayLabelFormatter.format(dateBeingChecked),
-                    score = avgScore,
-                    color = getMoodColor(avgScore)
-                ))
+                stats.add(WeeklyData(day = dayLabel, score = avgScore, color = getMoodColor(avgScore)))
             } else {
-                stats.add(WeeklyData(
-                    day = dayLabelFormatter.format(dateBeingChecked),
-                    score = 0f,
-                    color = Color.LightGray
-                ))
+                stats.add(WeeklyData(day = dayLabel, score = 0f, color = Color.LightGray))
             }
-            loopCal.add(Calendar.DAY_OF_YEAR, 1)
         }
+
         return stats
     }
 
     private fun normalizeDateString(dateString: String): String {
         var clean = dateString
-        if (clean.endsWith("Z")) {
-            clean = clean.replace("Z", "+0000")
-        } else if (clean.endsWith("+00:00")) {
-            clean = clean.replace("+00:00", "+0000")
-        }
-
+        if (clean.endsWith("Z")) clean = clean.replace("Z", "+0000")
+        else if (clean.endsWith("+00:00")) clean = clean.replace("+00:00", "+0000")
         val parts = clean.split("+")
         if (parts.size == 2) {
             var dateTimePart = parts[0]
             val timezonePart = "+" + parts[1]
-
             if (dateTimePart.contains(".")) {
                 val splitTime = dateTimePart.split(".")
                 var millis = splitTime[1]
-                if (millis.length > 3) {
-                    millis = millis.substring(0, 3)
-                } else {
-                    while (millis.length < 3) millis += "0"
-                }
+                if (millis.length > 3) millis = millis.substring(0, 3)
+                else while (millis.length < 3) millis += "0"
                 dateTimePart = "${splitTime[0]}.$millis"
             } else {
                 dateTimePart += ".000"
@@ -336,18 +333,9 @@ class HomeViewModel(
         }
     }
 
-    // DRAG GRAB
-    fun updateDiaryLocation(
-        diaryId: String,
-        lat: Double,
-        lng: Double
-    ) {
+    fun updateDiaryLocation(diaryId: String, lat: Double, lng: Double) {
         viewModelScope.launch {
-            repository.updateDiaryLocation(
-                diaryId = diaryId,
-                latitude = lat,
-                longitude = lng
-            )
+            repository.updateDiaryLocation(diaryId, lat, lng)
         }
     }
 
@@ -358,7 +346,6 @@ class HomeViewModel(
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                // Inisialisasi Repository di sini
                 val diaryRepository = DiaryRepository()
                 val scanRepository = ScanRepository()
                 HomeViewModel(diaryRepository, scanRepository)
