@@ -1,8 +1,9 @@
 package com.example.mindlens.repositories
 
-import androidx.core.graphics.set
+import android.util.Log
+import com.example.mindlens.helpers.getLoggedInUserId
 import com.example.mindlens.model.DiaryEntry
-import com.example.mindlens.supabase.DatabaseConnection // Pastikan import DatabaseConnection
+import com.example.mindlens.supabase.DatabaseConnection
 import io.github.jan.supabase.postgrest.from
 
 class DiaryRepository {
@@ -69,10 +70,5 @@ class DiaryRepository {
         ) {
             filter { eq("id", diaryId) }
         }
-    }
-
-    fun getCurrentUserId(): String? {
-        val user = supabase.auth.currentUserOrNull()
-        return user?.id
     }
 }
