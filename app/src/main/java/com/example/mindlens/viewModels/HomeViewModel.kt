@@ -10,29 +10,39 @@ import com.example.mindlens.data.HomeUiState
 import com.example.mindlens.data.WeeklyData
 import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.repositories.DiaryRepository
+import com.example.mindlens.repositories.ScanRepository
+import com.example.mindlens.screens.depressionClassifier.ScanHistoryItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
-import kotlin.math.PI
 
 sealed class HomeUiEvent {
     object SaveSuccess : HomeUiEvent()
     data class ShowMessage(val message: String) : HomeUiEvent()
 }
 
-class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
+class HomeViewModel(
+    private val repository: DiaryRepository,
+    private val scanRepository: ScanRepository // Tambahan untuk Scan
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
@@ -41,17 +51,64 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
     val uiEvent = _uiEvent.receiveAsFlow()
 
     init {
-        loadEntries()
+        loadAllData() // Panggil loadAllData saat ViewModel dibuat
     }
 
+    // --- FUNGSI UTAMA LOAD DATA (Diary + Scan) ---
+    fun loadAllData() {
+        loadEntries()
+        loadRecentScans()
+    }
+
+    // --- LOGIKA LOAD SCANS (SUPABASE) ---
+    fun loadRecentScans() {
+        viewModelScope.launch {
+            try {
+                // Ambil data scan dari Supabase via Repository
+                val scans = withContext(Dispatchers.IO) {
+                    scanRepository.getMyScans()
+                }
+
+                // Format ke ScanHistoryItem (UI Model) & Ambil 3 teratas
+                val formattedScans = scans.take(3).map { e ->
+                    ScanHistoryItem(
+                        id = e.id ?: "",
+                        imageUri = null,
+                        bitmap = null,
+                        result = e.result,
+                        confidencePercent = (e.confidence * 100f).coerceIn(0f, 100f),
+                        date = formatScanDate(e.createdAt)
+                    )
+                }
+
+                _uiState.update { it.copy(recentScans = formattedScans) }
+            } catch (e: Exception) {
+                // Error silent agar tidak mengganggu flow utama Diary
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Helper format tanggal Scan (menggunakan java.time agar lebih robust terhadap ISO 8601)
+    private fun formatScanDate(createdAt: String?): String {
+        if (createdAt.isNullOrBlank()) return "-"
+        val outFmt = DateTimeFormatter.ofPattern("dd MMM, HH:mm", Locale.getDefault())
+        return try {
+            val inst = Instant.parse(createdAt)
+            inst.atZone(ZoneId.systemDefault()).format(outFmt)
+        } catch (_: Exception) {
+            createdAt.take(16).replace('T', ' ')
+        }
+    }
+
+    // --- LOGIKA DIARY (YANG SUDAH ADA) ---
     fun loadEntries() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                val rawEntries = repository.getMyEntries()
+                val rawEntries = withContext(Dispatchers.IO) { repository.getMyEntries() }
 
-                // --- PERBAIKAN 1: SORTING DESCENDING (Terbaru Paling Atas) ---
-                // Kita sort berdasarkan string ISO tanggalnya
+                // Sorting Descending (Terbaru Paling Atas)
                 val sortedEntries = rawEntries.sortedByDescending { it.createdAt }
 
                 val weeklyData = calculateWeeklyStats(sortedEntries)
@@ -59,7 +116,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
 
                 _uiState.update {
                     it.copy(
-                        entries = sortedEntries, // Gunakan list yang sudah di-sort
+                        entries = sortedEntries,
                         weeklyStats = weeklyData,
                         averageMood = avgMoodString,
                         isLoading = false
@@ -77,7 +134,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                repository.updateDiaryEntry(entry)
+                withContext(Dispatchers.IO) { repository.updateDiaryEntry(entry) }
                 loadEntries() // Refresh list
                 sendEvent(HomeUiEvent.SaveSuccess)
             } catch (e: Exception) {
@@ -91,7 +148,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                repository.deleteDiaryEntry(id)
+                withContext(Dispatchers.IO) { repository.deleteDiaryEntry(id) }
                 loadEntries() // Refresh list
                 sendEvent(HomeUiEvent.ShowMessage("Diary berhasil dihapus"))
             } catch (e: Exception) {
@@ -110,43 +167,31 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val currentUserId = repository.getCurrentUserId()
+                val currentUserId = withContext(Dispatchers.IO) { repository.getCurrentUserId() }
                     ?: throw Exception("User session not found. Please login again.")
 
                 val now = Date()
-
                 val titleFormatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
                 val autoTitleDate = titleFormatter.format(now)
-
                 val timestamp = java.time.Instant.now().toString()
-
                 val generatedId = UUID.randomUUID().toString()
 
-                fun randomizeLocation(
-                    lat: Double,
-                    lng: Double,
-                    radiusMeters: Double
-                ): Pair<Double, Double> {
-
+                fun randomizeLocation(lat: Double, lng: Double, radiusMeters: Double): Pair<Double, Double> {
                     val radiusInDegrees = radiusMeters / 111_320.0
                     val u = Math.random()
                     val v = Math.random()
-
                     val w = radiusInDegrees * sqrt(u)
                     val t = 2 * PI * v
-
                     val deltaLat = w * cos(t)
                     val deltaLng = w * sin(t) / cos(Math.toRadians(lat))
-
                     return Pair(lat + deltaLat, lng + deltaLng)
                 }
 
-                val (finalLat, finalLng) =
-                    if (latitude != null && longitude != null) {
-                        randomizeLocation(latitude, longitude, radiusMeters = 50.0)
-                    } else {
-                        null to null
-                    }
+                val (finalLat, finalLng) = if (latitude != null && longitude != null) {
+                    randomizeLocation(latitude, longitude, radiusMeters = 50.0)
+                } else {
+                    null to null
+                }
 
                 val newEntry = DiaryEntry(
                     id = generatedId,
@@ -160,7 +205,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
                     longitude = finalLng
                 )
 
-                repository.createDiaryEntry(newEntry)
+                withContext(Dispatchers.IO) { repository.createDiaryEntry(newEntry) }
                 loadEntries()
                 sendEvent(HomeUiEvent.SaveSuccess)
 
@@ -174,14 +219,11 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
     private fun calculateWeeklyStats(entries: List<DiaryEntry>): List<WeeklyData> {
         val stats = mutableListOf<WeeklyData>()
 
-        // Formatter standar yang akan kita gunakan setelah string "dibersihkan"
-        // Kita paksa semua string jadi format ini nanti
         val standardParser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
         standardParser.timeZone = TimeZone.getTimeZone("UTC")
 
         val dayLabelFormatter = SimpleDateFormat("EEE", Locale.getDefault())
 
-        val calendar = Calendar.getInstance()
         val loopCal = Calendar.getInstance()
         loopCal.add(Calendar.DAY_OF_YEAR, -6)
 
@@ -189,9 +231,7 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
             val dateBeingChecked = loopCal.time
 
             val entriesForDay = entries.filter { entry ->
-                // PANGGIL FUNGSI PEMBERSIH DI SINI
                 val normalizedString = normalizeDateString(entry.createdAt)
-
                 try {
                     val entryDate = standardParser.parse(normalizedString)
                     if (entryDate != null) {
@@ -218,16 +258,13 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
                     color = Color.LightGray
                 ))
             }
-
             loopCal.add(Calendar.DAY_OF_YEAR, 1)
         }
-
         return stats
     }
 
     private fun normalizeDateString(dateString: String): String {
         var clean = dateString
-
         if (clean.endsWith("Z")) {
             clean = clean.replace("Z", "+0000")
         } else if (clean.endsWith("+00:00")) {
@@ -240,32 +277,22 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
             val timezonePart = "+" + parts[1]
 
             if (dateTimePart.contains(".")) {
-                // Punya milidetik
                 val splitTime = dateTimePart.split(".")
-                var millis = splitTime[1] // "532091" atau "697"
-
-                // Potong jika lebih dari 3 digit, atau tambah 0 jika kurang
+                var millis = splitTime[1]
                 if (millis.length > 3) {
                     millis = millis.substring(0, 3)
                 } else {
-                    while (millis.length < 3) {
-                        millis += "0"
-                    }
+                    while (millis.length < 3) millis += "0"
                 }
                 dateTimePart = "${splitTime[0]}.$millis"
             } else {
-                // Tidak punya milidetik, tambahkan .000
                 dateTimePart += ".000"
             }
-
-            // Gabungkan kembali: "2025-12-07T10:36:16.532+0000"
             return dateTimePart + timezonePart
         }
-
-        return clean // Kembalikan apa adanya jika format aneh (biar ditangani try-catch di atas)
+        return clean
     }
 
-    // Helper isSameDay tetap sama
     private fun isSameDay(date1: Date, date2: Date): Boolean {
         val cal1 = Calendar.getInstance().apply { time = date1 }
         val cal2 = Calendar.getInstance().apply { time = date2 }
@@ -286,11 +313,11 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
 
     private fun getMoodColor(score: Float): Color {
         return when {
-            score >= 0.8f -> Color(0xFF64B5F6) // Great (Biru)
-            score >= 0.6f -> Color(0xFFAED581) // Good (Hijau Muda)
-            score >= 0.4f -> Color(0xFFFFF176) // Neutral (Kuning)
-            score >= 0.2f -> Color(0xFFFFB74D) // Bad (Oranye)
-            else -> Color(0xFFE57373)          // Awful (Merah)
+            score >= 0.8f -> Color(0xFF64B5F6)
+            score >= 0.6f -> Color(0xFFAED581)
+            score >= 0.4f -> Color(0xFFFFF176)
+            score >= 0.2f -> Color(0xFFFFB74D)
+            else -> Color(0xFFE57373)
         }
     }
 
@@ -298,7 +325,6 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
         if (entries.isEmpty()) return "Belum ada data"
         val totalScore = entries.map { getMoodScore(it.mood) }.sum()
         val avg = totalScore / entries.size
-
         return when {
             avg >= 0.8f -> "Sangat Bahagia! 🤩"
             avg >= 0.6f -> "Cukup Bahagia 🙂"
@@ -315,8 +341,10 @@ class HomeViewModel(private val repository: DiaryRepository) : ViewModel() {
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val repository = DiaryRepository()
-                HomeViewModel(repository)
+                // Inisialisasi Repository di sini
+                val diaryRepository = DiaryRepository()
+                val scanRepository = ScanRepository()
+                HomeViewModel(diaryRepository, scanRepository)
             }
         }
     }

@@ -27,7 +27,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mindlens.data.HomeScanItem
 import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.ui.*
 import com.example.mindlens.ui.components.element.CustomToast
@@ -47,11 +46,6 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-
-val dummyHomeScans = listOf(
-    HomeScanItem("Normal / Sehat", "Hari ini, 08:30", 92, false),
-    HomeScanItem("Indikasi Stress", "Kemarin, 20:15", 74, true)
-)
 
 // Main home screen composable
 @Composable
@@ -79,7 +73,6 @@ fun HomeScreen(
     val locationPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
-                // Pastikan permission memang granted sebelum akses lastLocation
                 if (ContextCompat.checkSelfPermission(
                         context,
                         Manifest.permission.ACCESS_FINE_LOCATION
@@ -89,7 +82,6 @@ fun HomeScreen(
                         if (loc != null) {
                             onGrantedCallback?.invoke(loc)
                         } else {
-                            // fallback request fresh location
                             val locationRequest = LocationRequest.Builder(
                                 Priority.PRIORITY_HIGH_ACCURACY,
                                 1000L
@@ -101,29 +93,25 @@ fun HomeScreen(
                                     fusedLocation.removeLocationUpdates(this)
                                 }
                             }
-
                             fusedLocation.requestLocationUpdates(locationRequest, callback, null)
                         }
                     }
                 } else {
-                    // Safety fallback kalau somehow permission ilang
                     onDeniedCallback?.invoke()
                 }
             } else {
                 onDeniedCallback?.invoke()
             }
-
             onGrantedCallback = null
         }
 
-    // Auto refresh
+    // Auto refresh data (Diary + Scans) saat layar aktif
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                // Setiap kali layar ini muncul (termasuk saat tombol Back ditekan),
-                // kita paksa muat ulang data dari database
-                viewModel.loadEntries()
+                // Memanggil fungsi baru di ViewModel
+                viewModel.loadAllData()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -132,7 +120,7 @@ fun HomeScreen(
         }
     }
 
-    // REQUEST LOCATION
+    // LOCATION HELPER
     fun requestLocationOptional(
         fusedLocation: FusedLocationProviderClient,
         context: Context,
@@ -145,7 +133,6 @@ fun HomeScreen(
                 if (loc != null) {
                     onLocation(loc)
                 } else {
-                    // fallback ambil lokasi baru
                     val locationRequest = LocationRequest.Builder(
                         Priority.PRIORITY_HIGH_ACCURACY,
                         1000L
@@ -161,7 +148,6 @@ fun HomeScreen(
                 }
             }
         } else {
-            // permission belum granted, kembalikan null
             onLocation(null)
         }
     }
@@ -209,14 +195,15 @@ fun HomeScreen(
                 }
             )
 
-            // CHART & TEXT INDIKASI
+            // CHART
             WeeklyChartSection(
                 weeklyData = state.weeklyStats,
-                averageMoodStatus = state.averageMood // Menampilkan status mood terbaru
+                averageMoodStatus = state.averageMood
             )
 
+            // SCAN SECTION (Updated) - Menampilkan data real dari state
             RecentScansHomeSection(
-                scans = dummyHomeScans,
+                scans = state.recentScans,
                 onScanClick = onNavigateToScan
             )
 
@@ -228,7 +215,7 @@ fun HomeScreen(
                 }
             )
 
-            // LIST HISTORY TERBARU
+            // LIST DIARY TERBARU
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = TechPrimary)
@@ -287,7 +274,6 @@ fun HomeScreen(
                             if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
                                 == PackageManager.PERMISSION_GRANTED
                             ) {
-                                // ambil lokasi & save
                                 requestLocationOptional(fusedLocation, context) { location ->
                                     viewModel.saveDiaryEntry(
                                         title = diaryTitleText,
