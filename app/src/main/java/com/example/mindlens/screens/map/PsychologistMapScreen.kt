@@ -49,7 +49,7 @@ import com.example.mindlens.R
 import android.provider.Settings
 import android.net.Uri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mindlens.data.DiaryEntry
+import com.example.mindlens.model.DiaryEntry
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.border
