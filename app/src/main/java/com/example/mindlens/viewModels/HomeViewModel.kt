@@ -34,6 +34,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.TextStyle
 
 sealed class HomeUiEvent {
@@ -233,14 +234,14 @@ class HomeViewModel(
             val entriesForDay = entries.filter { entry ->
                 try {
                     // Parsing ISO-8601
-                    val entryInstant = Instant.parse(entry.createdAt)
+                    val entryInstant = LocalDateTime.parse(entry.createdAt)
                     // Convert to localdate
                     val entryDate = entryInstant.atZone(zoneId).toLocalDate()
 
                     // Bandingkan apakah harinya sama
                     entryDate.isEqual(targetDate)
                 } catch (e: Exception) {
-                    // Jika format tanggal rusak, skip data ini
+                    Log.e("ERR_CALC_WEEKLY_STATS", e.message.toString())
                     false
                 }
             }
