@@ -66,7 +66,7 @@ fun SplashScreen(
 
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(text = "MindLens", fontWeight = FontWeight.Bold, color = PrimaryGreen, fontSize = 8.em)
     }
