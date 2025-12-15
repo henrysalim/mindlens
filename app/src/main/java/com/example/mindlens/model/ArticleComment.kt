@@ -13,7 +13,7 @@ data class Profile(
     val avatar: String? = null
 )
 
-// model to get the comment
+// model to represent the comment (GET)
 @Serializable
 data class GetArticleComment(
     @SerialName("id")
@@ -35,7 +35,7 @@ data class GetArticleComment(
     val profile: Profile? = null
 )
 
-// model to post the comemnt
+// model to represent the comment (POST)
 @Serializable
 data class PostArticleComment(
     @SerialName("id")

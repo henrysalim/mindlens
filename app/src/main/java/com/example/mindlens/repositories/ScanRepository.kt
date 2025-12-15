@@ -1,74 +1,69 @@
 package com.example.mindlens.repositories
 
-import com.example.mindlens.data.ScanEntry
+import android.util.Log
+import com.example.mindlens.dataClass.ScanEntry
+import com.example.mindlens.helpers.getLoggedInUserId
+import com.example.mindlens.model.ScanInsert
 import com.example.mindlens.supabase.DatabaseConnection
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
-@Serializable
-private data class ScanInsert(
-    @SerialName("user_id") val userId: String,
-    val result: String,
-    val confidence: Float
-)
 
 class ScanRepository {
+    private val supabase = DatabaseConnection.supabase
+    private val userId = getLoggedInUserId() ?: ""
 
     suspend fun saveScan(result: String, confidence: Float) {
-        val userId = DatabaseConnection.supabase.auth.currentUserOrNull()?.id
-            ?: throw IllegalStateException("User belum login")
-
+        val timestamp = java.time.Instant.now().toString()
 
         val payload = ScanInsert(
             userId = userId,
             result = result,
-            confidence = confidence
+            confidence = confidence,
+            created_at = timestamp
         )
 
-        DatabaseConnection.supabase
-            .from("detection_histories")
-            .insert(payload)
+        try {
+            supabase.from("detection_histories").insert(payload)
+        } catch (e: Exception) {
+            Log.e("ScanRepo", "Insert error: ${e.message}")
+            throw e // Rethrow to let ViewModel handle UI state
+        }
     }
 
     suspend fun getMyScans(): List<ScanEntry> {
-        val userId = DatabaseConnection.supabase.auth.currentUserOrNull()?.id ?: return emptyList()
+        val userId = getLoggedInUserId() ?: return emptyList()
 
-        return DatabaseConnection.supabase
-            .from("detection_histories")
-            .select {
+        return try {
+            supabase.from("detection_histories").select {
                 filter { eq("user_id", userId) }
                 order("created_at", order = Order.DESCENDING)
-            }
-            .decodeList<ScanEntry>()
+            }.decodeList<ScanEntry>()
+        } catch (e: Exception) {
+            Log.e("ScanRepo", "Fetch error: ${e.message}")
+            emptyList()
+        }
     }
 
     suspend fun deleteScanById(id: String) {
-        // optional guard: pastikan login
-        DatabaseConnection.supabase.auth.currentUserOrNull()
-            ?: throw IllegalStateException("User belum login")
-
-        DatabaseConnection.supabase
-            .from("detection_histories")
-            .delete {
-                filter {
-                    eq("id", id)
-                }
+        try {
+            supabase.from("detection_histories").delete {
+                filter { eq("id", id) }
             }
+        } catch (e: Exception) {
+            Log.e("ScanRepo", "Delete error: ${e.message}")
+            throw e
+        }
     }
 
     suspend fun deleteAllMyScans() {
-        val userId = DatabaseConnection.supabase.auth.currentUserOrNull()?.id
-            ?: throw IllegalStateException("User belum login")
-
-        DatabaseConnection.supabase
-            .from("detection_histories")
-            .delete {
-                filter {
-                    eq("user_id", userId)
-                }
+        try {
+            supabase.from("detection_histories").delete {
+                filter { eq("user_id", userId) }
             }
+        } catch (e: Exception) {
+            Log.e("ScanRepo", "Delete all error: ${e.message}")
+            throw e
+        }
     }
 }

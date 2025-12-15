@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.mindlens.Routes
+import com.example.mindlens.navigations.Routes
 import com.example.mindlens.ui.components.input.CustomLabeledTextField
 import com.example.mindlens.ui.components.element.CustomToast
 import com.example.mindlens.viewModels.AuthState

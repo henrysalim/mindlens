@@ -6,6 +6,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+// helper function to format date
 fun formatDate(date: String?): String {
     val utcDateTime = LocalDateTime.parse(date)
 

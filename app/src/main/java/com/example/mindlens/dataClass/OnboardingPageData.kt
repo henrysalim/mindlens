@@ -1,8 +1,8 @@
-package com.example.mindlens.data
+package com.example.mindlens.dataClass
 
 import com.example.mindlens.R
 
-// Data class for a single onboarding page structure
+// Data structure for a single onboarding page structure
 data class OnboardingPageData(
     val imageRes: Int,
     val title: String,

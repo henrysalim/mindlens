@@ -8,12 +8,13 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 
 class ProfileRepository {
+    private val supabase = DatabaseConnection.supabase
+    private val userId = getLoggedInUserId() ?: ""
+
     // get user's profile
     suspend fun getProfile(): UserProfile? {
-        val userId = DatabaseConnection.supabase.auth.currentUserOrNull()?.id ?: return null
-
         return try {
-            DatabaseConnection.supabase.from("profiles")
+            supabase.from("profiles")
                 .select {
                     filter {
                         eq("id", userId)
@@ -21,15 +22,13 @@ class ProfileRepository {
                 }
                 .decodeSingle<UserProfile>()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("ERR_GET_PROFILE", e.message.toString())
             null
         }
     }
 
     // update the user's profile
     suspend fun updateProfile(name: String, bio: String, base64Image: String?) {
-        val userId = getLoggedInUserId() ?: return
-
         val updateData = mutableMapOf(
             "full_name" to name,
             "bio" to bio
@@ -41,12 +40,13 @@ class ProfileRepository {
         }
 
         try {
-            DatabaseConnection.supabase.from("profiles")
+            supabase.from("profiles")
                 .update(updateData) {
                     filter { eq("id", userId) }
                 }
         } catch (e: Exception) {
-            Log.e("UPDATE ERROR", e.message.toString())
+            // log if any error ocurrs
+            Log.e("ERR_UPDATE_PROFILE", e.message.toString())
         }
     }
 }

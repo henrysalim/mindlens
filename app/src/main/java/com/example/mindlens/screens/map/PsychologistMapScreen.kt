@@ -12,7 +12,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -49,29 +48,28 @@ import com.example.mindlens.R
 import android.provider.Settings
 import android.net.Uri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mindlens.model.DiaryEntry
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.zIndex
+import com.example.mindlens.helpers.ImageUtils
+import com.example.mindlens.ui.components.map.StatItem
 
 val jakartaCenter = LatLng(-6.175392, 106.827153)
 
-// -----------------------------
-// Helper: getAccurateLocation (suspend)
-// -----------------------------
+// get user's current location
 private suspend fun getAccurateLocation(
     context: Context,
     fused: FusedLocationProviderClient
 ): LatLng? {
-    if (context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+    if (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) !=
         PackageManager.PERMISSION_GRANTED
     ) return null
 
     return try {
-        // Recommended: getCurrentLocation for a fresh location
+        // getCurrentLocation for a fresh location
         val loc = fused.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
         loc?.let { LatLng(it.latitude, it.longitude) }
     } catch (e: SecurityException) {
@@ -82,10 +80,6 @@ private suspend fun getAccurateLocation(
         null
     }
 }
-
-// -----------------------------
-// Main Composable: PsychologistMapScreen (safe version)
-// -----------------------------
 @Composable
 fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
 ) {
@@ -96,13 +90,10 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
-    var isFetchingPlaces by remember { mutableStateOf(false) }
     var floatingOffset by remember { mutableStateOf<Offset?>(null) }
     var selectedDiaryId by remember { mutableStateOf<String?>(null) }
     var tooltipLatLng by remember { mutableStateOf<LatLng?>(null) }
-
     val scope = rememberCoroutineScope()
-
     val selectedDiary = remember(state.entries, selectedDiaryId) {
         state.entries.find { it.id == selectedDiaryId }
     }
@@ -129,15 +120,12 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
         }
     }
 
-
-
-
     // camera state
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(jakartaCenter, 13f)
     }
 
-    // Launch on first composition: request permission if needed, else fetch
+    // request permission if needed, else fetch
     LaunchedEffect(key1 = true) {
         val granted = ContextCompat.checkSelfPermission(
             context,
@@ -158,11 +146,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
         }
     }
 
-    // Fetch nearby places when userLocation available
-
-
-
-    // Filter Data 7 Hari Terakhir
+    // Filter Data for last 7 days
     val recentDiaries = remember(state.entries) {
         val calendar = Calendar.getInstance()
         calendar.add(Calendar.DAY_OF_YEAR, -7)
@@ -172,7 +156,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
         }
     }
 
-    // --- HITUNG STATISTIK 5 KATEGORI ---
+    // Calculate statistics for 5 categories
     val moodCounts = remember(recentDiaries) {
         mapOf(
             "Great" to recentDiaries.count { it.mood.lowercase() in listOf("great", "amazing", "bahagia") },
@@ -184,7 +168,6 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
     }
 
     // UI
-
     LaunchedEffect(editingDiaryId) {
         if (editingDiaryId != null) {
             Toast.makeText(
@@ -196,7 +179,6 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
     }
 
     // TOOLTIP
-
     LaunchedEffect(
         tooltipLatLng,
         cameraPositionState.position
@@ -252,7 +234,6 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
         }
     }
 
-
     Box(modifier = Modifier.fillMaxSize()) {
         // MapProperties: only enable my-location if we have permission
         val mapProperties = MapProperties(
@@ -273,7 +254,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
             recentDiaries.forEach { diary ->
                 if (diary.latitude != null && diary.longitude != null) {
                     val position = LatLng(diary.latitude, diary.longitude)
-                    val (iconRes, color) = getMoodVectorIcon(diary.mood)
+                    val (iconRes, color) = ImageUtils.getMoodVectorIcon(diary.mood)
 
                     val markerPosition =
                         if (editingDiaryId == diary.id && editingPosition != null)
@@ -286,7 +267,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
                             position = markerPosition
                         )
 
-                        // OBSERVE GERAKAN MARKER
+                        // Observe Marker Movement
                         LaunchedEffect(editingDiaryId, markerState) {
                             if (editingDiaryId == diary.id) {
                                 snapshotFlow { markerState.position }
@@ -301,7 +282,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
                             draggable = editingDiaryId == diary.id,
                             title = diary.mood,
                             snippet = diary.title,
-                            icon = bitmapDescriptorFromVector(context, iconRes, color),
+                            icon = ImageUtils.bitmapDescriptorFromVector(context, iconRes, color),
                             onClick = {
                                 selectedDiaryId = diary.id
                                 tooltipLatLng = markerState.position
@@ -311,8 +292,6 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
                     }
                 }
             }
-
-
 
             // user location marker if available
             userLocation?.let { loc ->
@@ -349,7 +328,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
             }
         }
 
-        // --- KARTU STATISTIK (DENGAN 5 KATEGORI) ---
+        // Statistics card above the map
         Card(
             modifier = Modifier
                 .padding(top = 50.dp, start = 16.dp, end = 16.dp)
@@ -366,14 +345,13 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
                 Text("Jejak perasaanmu 7 hari terakhir", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Scrollable Row agar muat 5 item
+                // Scrollable Row to fit 5 items in
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth() // Memastikan Row memenuhi lebar kartu
-                        .padding(horizontal = 4.dp), // Padding kiri-kanan agar tidak terlalu mepet pinggir
-                    horizontalArrangement = Arrangement.SpaceBetween // Menyebarkan item secara merata
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Perhatikan: Di dalam Row biasa, kita TIDAK pakai "item { }" lagi
                     StatItem("Great", moodCounts["Great"] ?: 0)
                     StatItem("Good", moodCounts["Good"] ?: 0)
                     StatItem("Neutral", moodCounts["Neutral"] ?: 0)
@@ -410,14 +388,14 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
             Button(
                 onClick = {
                     if (isLocationPermanentlyDenied) {
-                        // 👉 buka settings
+                        // open settings to enable location
                         val intent = Intent(
                             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                             Uri.fromParts("package", context.packageName, null)
                         )
                         context.startActivity(intent)
                     } else {
-                        // 👉 request permission normal
+                        // normal request permission
                         permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
                     }
                 },
@@ -435,104 +413,5 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
                 )
             }
         }
-
-
-
-    }
-}
-
-// HELPER VECTOR DRAWABLE SENTIMENT
-fun bitmapDescriptorFromVector(
-    context: Context,
-    @DrawableRes vectorResId: Int,
-    tint: Color
-): BitmapDescriptor {
-
-    val drawable = ContextCompat.getDrawable(context, vectorResId)
-        ?: return BitmapDescriptorFactory.defaultMarker()
-
-    drawable.setTint(tint.toArgb())
-
-    val sizePx = 64
-    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-
-    drawable.setBounds(0, 0, canvas.width, canvas.height)
-    drawable.draw(canvas)
-
-    return BitmapDescriptorFactory.fromBitmap(bitmap)
-}
-
-
-// AMBIL ICON SENTIMENT
-
-fun getMoodVectorIcon(mood: String): Pair<Int, Color> {
-    return when (mood.lowercase()) {
-        "great", "amazing", "bahagia" ->
-            R.drawable.ic_verysatisfied to Color(0xFF64B5F6)
-
-        "good", "senang" ->
-            R.drawable.ic_satisfied to Color(0xFFAED581)
-
-        "neutral", "okay", "biasa" ->
-            R.drawable.ic_neutral to Color(0xFFFFF176)
-
-        "bad", "buruk" ->
-            R.drawable.ic_dissatisfied to Color(0xFFFFB74D)
-
-        "awful", "terrible", "sedih" ->
-            R.drawable.ic_verydissatisfied to Color(0xFFE57373)
-
-        else ->
-            R.drawable.ic_neutral to Color.Gray
-    }
-}
-
-// --- KOMPONEN PENDUKUNG ---
-@Composable
-fun StatItem(
-    mood: String,
-    count: Int
-) {
-    val (iconRes, color) = getMoodVectorIcon(mood)
-
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = iconRes),
-                contentDescription = mood,
-                tint = color,
-                modifier = Modifier.size(18.dp).graphicsLayer { alpha = 0.9f }
-            )
-
-            Text(
-                text = mood,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 12.sp,
-                color = TechTextPrimary
-            )
-        }
-
-        Text(
-            text = "$count",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = TechTextPrimary
-        )
-    }
-}
-
-
-fun getMoodAttributes(mood: String): Pair<Float, String> {
-    return when (mood.lowercase()) {
-        "great", "amazing", "bahagia" -> Pair(BitmapDescriptorFactory.HUE_AZURE, "🤩") // Biru Langit
-        "good", "senang" -> Pair(BitmapDescriptorFactory.HUE_GREEN, "🙂") // Hijau
-        "neutral", "okay", "biasa" -> Pair(BitmapDescriptorFactory.HUE_YELLOW, "😐") // Kuning
-        "bad", "buruk" -> Pair(BitmapDescriptorFactory.HUE_ORANGE, "😣") // Oranye
-        "awful", "terrible", "sedih" -> Pair(BitmapDescriptorFactory.HUE_RED, "😭") // Merah
-        else -> Pair(BitmapDescriptorFactory.HUE_VIOLET, "📍")
     }
 }

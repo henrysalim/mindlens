@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -66,44 +64,6 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
     val userName = remember { authViewModel.getUserName() }
 
-    /// REQUEST LOCATION
-    var onGrantedCallback by remember { mutableStateOf<((Location) -> Unit)?>(null) }
-    var onDeniedCallback by remember { mutableStateOf<(() -> Unit)?>(null) }
-
-    val locationPermissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                if (ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
-                    fusedLocation.lastLocation.addOnSuccessListener { loc ->
-                        if (loc != null) {
-                            onGrantedCallback?.invoke(loc)
-                        } else {
-                            val locationRequest = LocationRequest.Builder(
-                                Priority.PRIORITY_HIGH_ACCURACY,
-                                1000L
-                            ).setMaxUpdates(1).build()
-
-                            val callback = object : LocationCallback() {
-                                override fun onLocationResult(result: LocationResult) {
-                                    result.lastLocation?.let { onGrantedCallback?.invoke(it) }
-                                    fusedLocation.removeLocationUpdates(this)
-                                }
-                            }
-                            fusedLocation.requestLocationUpdates(locationRequest, callback, null)
-                        }
-                    }
-                } else {
-                    onDeniedCallback?.invoke()
-                }
-            } else {
-                onDeniedCallback?.invoke()
-            }
-            onGrantedCallback = null
-        }
     // Local input state
     var showDiaryDialog by remember { mutableStateOf(false) }
     var selectedMoodForEntry by remember { mutableStateOf("") }
@@ -117,7 +77,7 @@ fun HomeScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                // Memanggil fungsi baru di ViewModel
+                // load all data from view model
                 viewModel.loadAllData()
                 // reload data from database every time this page opened (better use caching if possible...but don't have any time -> for next developer 🔥)
                 viewModel.loadEntries()
@@ -129,7 +89,6 @@ fun HomeScreen(
         }
     }
 
-    // LOCATION HELPER
     // Request location
     fun requestLocationOptional(
         fusedLocation: FusedLocationProviderClient,

@@ -1,18 +1,20 @@
 package com.example.mindlens.viewModels
 
+import android.util.Log
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.mindlens.data.HomeUiState
-import com.example.mindlens.data.WeeklyData
+import com.example.mindlens.dataClass.HomeUiState
+import com.example.mindlens.dataClass.ScanHistoryItem
+import com.example.mindlens.dataClass.WeeklyData
+import com.example.mindlens.helpers.formatDate
 import com.example.mindlens.helpers.getLoggedInUserId
 import com.example.mindlens.model.DiaryEntry
 import com.example.mindlens.repositories.DiaryRepository
 import com.example.mindlens.repositories.ScanRepository
-import com.example.mindlens.screens.depressionClassifier.ScanHistoryItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,11 +26,8 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
 import java.util.UUID
 import kotlin.math.PI
 import kotlin.math.cos
@@ -53,16 +52,15 @@ class HomeViewModel(
     val uiEvent = _uiEvent.receiveAsFlow()
 
     init {
+        // load all data when home screen opened
         loadAllData()
     }
 
-    // --- FUNGSI UTAMA LOAD DATA ---
     fun loadAllData() {
         loadEntries()
         loadRecentScans()
     }
 
-    // --- LOGIKA LOAD SCANS (SUPABASE) ---
     fun loadRecentScans() {
         viewModelScope.launch {
             try {
@@ -77,34 +75,22 @@ class HomeViewModel(
                         bitmap = null,
                         result = e.result,
                         confidencePercent = (e.confidence * 100f).coerceIn(0f, 100f),
-                        date = formatScanDate(e.createdAt)
+                        date = formatDate(e.createdAt)
                     )
                 }
 
                 _uiState.update { it.copy(recentScans = formattedScans) }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("ERR_LOAD_RECENT_SCANS", e.message.toString())
             }
         }
     }
 
-    private fun formatScanDate(createdAt: String?): String {
-        if (createdAt.isNullOrBlank()) return "-"
-        val outFmt = DateTimeFormatter.ofPattern("dd MMM, HH:mm", Locale.getDefault())
-        return try {
-            val inst = Instant.parse(createdAt)
-            inst.atZone(ZoneId.systemDefault()).format(outFmt)
-        } catch (_: Exception) {
-            createdAt.take(16).replace('T', ' ')
-        }
-    }
-
-    // --- LOGIKA DIARY ---
+    // load entries
     fun loadEntries() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // Tambahkan withContext(Dispatchers.IO) agar load database berjalan di background thread
                 val rawEntries = withContext(Dispatchers.IO) {
                     repository.getDiaryEntries()
                 }
@@ -123,13 +109,15 @@ class HomeViewModel(
                     )
                 }
             } catch (e: Exception) {
+                Log.e("ERR_LOAD_ENTRIES", e.message.toString())
                 _uiState.update {
-                    it.copy(isLoading = false, errorMessage = "Gagal memuat: ${e.message}")
+                    it.copy(isLoading = false, errorMessage = "Gagal memuat diary!")
                 }
             }
         }
     }
 
+    // update diary entry
     fun updateDiaryEntry(entry: DiaryEntry) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -139,7 +127,8 @@ class HomeViewModel(
                 sendEvent(HomeUiEvent.SaveSuccess)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
-                sendEvent(HomeUiEvent.ShowMessage("Gagal update: ${e.message}"))
+                Log.e("ERR_UPDATE_DIARY_ENTRY", e.message.toString())
+                sendEvent(HomeUiEvent.ShowMessage("Gagal update diary!"))
             }
         }
     }
@@ -153,12 +142,20 @@ class HomeViewModel(
                 sendEvent(HomeUiEvent.ShowMessage("Diary berhasil dihapus"))
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
-                sendEvent(HomeUiEvent.ShowMessage("Gagal hapus: ${e.message}"))
+                Log.e("ERR_DELETE_DIARY_ENTRY", e.message.toString())
+                sendEvent(HomeUiEvent.ShowMessage("Gagal hapus diary!"))
             }
         }
     }
 
-    fun saveDiaryEntry(title: String, content: String, mood: String, colorInt: Int, latitude: Double?, longitude: Double?) {
+    fun saveDiaryEntry(
+        title: String,
+        content: String,
+        mood: String,
+        colorInt: Int,
+        latitude: Double?,
+        longitude: Double?
+    ) {
         if (content.isBlank()) {
             sendEvent(HomeUiEvent.ShowMessage("Isi diary tidak boleh kosong"))
             return
@@ -167,16 +164,13 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                // --- PERBAIKAN DI SINI ---
-                // Tambahkan Elvis operator (?:) untuk menangani null.
-                // Jika getLoggedInUserId() null, throw Exception agar masuk ke blok catch.
                 val currentUserId = getLoggedInUserId()
                     ?: throw Exception("User session not found. Please login again.")
 
                 val now = Date()
                 val titleFormatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
                 val autoTitleDate = titleFormatter.format(now)
-                val timestamp = java.time.Instant.now().toString()
+                val timestamp = Instant.now().toString()
                 val generatedId = UUID.randomUUID().toString()
 
                 fun randomizeLocation(lat: Double, lng: Double, radiusMeters: Double): Pair<Double, Double> {
@@ -196,7 +190,6 @@ class HomeViewModel(
                     null to null
                 }
 
-                // currentUserId sekarang sudah pasti String (bukan null)
                 val newEntry = DiaryEntry(
                     id = generatedId,
                     userId = currentUserId,
@@ -209,7 +202,7 @@ class HomeViewModel(
                     longitude = finalLng
                 )
 
-                // Gunakan withContext untuk operasi database insert
+                // insert databse with withContext
                 withContext(Dispatchers.IO) {
                     repository.createDiaryEntry(newEntry)
                 }
@@ -219,31 +212,29 @@ class HomeViewModel(
 
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
-                sendEvent(HomeUiEvent.ShowMessage("Error: ${e.message}"))
+                Log.e("ERR_SAVE_DIARY_ENTRY", e.message.toString())
+                sendEvent(HomeUiEvent.ShowMessage("Error menyimpan diary!"))
             }
         }
     }
 
-    // ... (Fungsi Helper Statistik tetap sama) ...
-
     private fun calculateWeeklyStats(entries: List<DiaryEntry>): List<WeeklyData> {
         val stats = mutableListOf<WeeklyData>()
 
-        // 1. Dapatkan Zona Waktu HP User (agar grafik sesuai hari user saat ini)
+        // Get phone's Timezone
         val zoneId = ZoneId.systemDefault()
         val today = LocalDate.now(zoneId)
 
-        // 2. Loop 7 hari ke belakang (dari H-6 sampai Hari Ini)
-        // Kita gunakan range 6 downTo 0 agar urutannya: H-6, H-5 ... Hari Ini
+        // Loop to last 7 days
         for (i in 6 downTo 0) {
             val targetDate = today.minusDays(i.toLong())
 
-            // 3. Filter entry yang tanggalnya SAMA dengan targetDate
+            // Filter entry
             val entriesForDay = entries.filter { entry ->
                 try {
-                    // Parsing ISO-8601 string langsung ke Instant (Menangani UTC, Z, Microseconds otomatis)
+                    // Parsing ISO-8601
                     val entryInstant = Instant.parse(entry.createdAt)
-                    // Konversi ke LocalDate sesuai Zona Waktu User
+                    // Convert to localdate
                     val entryDate = entryInstant.atZone(zoneId).toLocalDate()
 
                     // Bandingkan apakah harinya sama
@@ -254,10 +245,10 @@ class HomeViewModel(
                 }
             }
 
-            // 4. Format Nama Hari (Sen, Sel, Rab...)
+            // Format day name
             val dayLabel = targetDate.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())
 
-            // 5. Hitung Skor Rata-rata
+            // Calculate avg score
             if (entriesForDay.isNotEmpty()) {
                 val totalScore = entriesForDay.map { getMoodScore(it.mood) }.sum()
                 val avgScore = totalScore / entriesForDay.size
@@ -268,35 +259,6 @@ class HomeViewModel(
         }
 
         return stats
-    }
-
-    private fun normalizeDateString(dateString: String): String {
-        var clean = dateString
-        if (clean.endsWith("Z")) clean = clean.replace("Z", "+0000")
-        else if (clean.endsWith("+00:00")) clean = clean.replace("+00:00", "+0000")
-        val parts = clean.split("+")
-        if (parts.size == 2) {
-            var dateTimePart = parts[0]
-            val timezonePart = "+" + parts[1]
-            if (dateTimePart.contains(".")) {
-                val splitTime = dateTimePart.split(".")
-                var millis = splitTime[1]
-                if (millis.length > 3) millis = millis.substring(0, 3)
-                else while (millis.length < 3) millis += "0"
-                dateTimePart = "${splitTime[0]}.$millis"
-            } else {
-                dateTimePart += ".000"
-            }
-            return dateTimePart + timezonePart
-        }
-        return clean
-    }
-
-    private fun isSameDay(date1: Date, date2: Date): Boolean {
-        val cal1 = Calendar.getInstance().apply { time = date1 }
-        val cal2 = Calendar.getInstance().apply { time = date2 }
-        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
 
     private fun getMoodScore(mood: String): Float {

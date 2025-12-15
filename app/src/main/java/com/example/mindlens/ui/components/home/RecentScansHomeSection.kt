@@ -24,7 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.mindlens.screens.depressionClassifier.ScanHistoryItem
+import com.example.mindlens.dataClass.ScanHistoryItem
 import com.example.mindlens.ui.TechPrimary
 import com.example.mindlens.ui.TechTextPrimary
 import com.example.mindlens.ui.TechTextSecondary
@@ -32,7 +32,7 @@ import com.example.mindlens.ui.TechTextSecondary
 @Composable
 fun RecentScansHomeSection(
     scans: List<ScanHistoryItem>,
-    onScanClick: () -> Unit // Aksi saat klik "See All" atau card
+    onScanClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
         // Header Row
@@ -69,40 +69,3 @@ fun RecentScansHomeSection(
     }
 }
 
-@Composable
-private fun ScanItemCard(item: ScanHistoryItem) {
-    val isRisk = item.result.contains("Depresi", ignoreCase = true) || item.result == "1"
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(1.dp),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Outlined.History, null, tint = TechTextSecondary)
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    item.result,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = if (isRisk) Color(0xFFEF5350) else Color(0xFF2E7D32)
-                )
-                Text(item.date, fontSize = 12.sp, color = TechTextSecondary)
-            }
-
-            Text(
-                "${item.confidencePercent.toInt()}%",
-                fontWeight = FontWeight.Bold,
-                color = TechPrimary
-            )
-        }
-    }
-}

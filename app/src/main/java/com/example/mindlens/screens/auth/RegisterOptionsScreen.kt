@@ -17,7 +17,7 @@ import com.example.mindlens.R
 import com.example.mindlens.supabase.DatabaseConnection
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mindlens.Routes
+import com.example.mindlens.navigations.Routes
 import com.example.mindlens.ui.components.input.CustomLabeledTextField
 import com.example.mindlens.ui.components.element.CustomToast
 import com.example.mindlens.ui.components.element.SocialButton

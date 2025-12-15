@@ -1,9 +1,8 @@
-package com.example.mindlens.data
+package com.example.mindlens.dataClass
 
 import com.example.mindlens.model.DiaryEntry
-import com.example.mindlens.screens.depressionClassifier.ScanHistoryItem
 
-// For storing various states in home screen
+// Data structure for storing various states in home screen
 data class HomeUiState(
     val entries: List<DiaryEntry> = emptyList(),
     val weeklyStats: List<WeeklyData> = emptyList(),
