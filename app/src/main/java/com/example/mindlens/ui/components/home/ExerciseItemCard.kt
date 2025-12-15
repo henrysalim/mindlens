@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.mindlens.data.ExerciseMock
+import com.example.mindlens.dataClass.ExerciseMock
 import com.example.mindlens.helpers.getYoutubeThumbnail
 import com.example.mindlens.ui.TechPrimary
 import com.example.mindlens.ui.TechSurface

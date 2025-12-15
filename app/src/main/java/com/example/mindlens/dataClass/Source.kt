@@ -1,9 +1,9 @@
-package com.example.mindlens.data
+package com.example.mindlens.dataClass
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
-//for storing the detail of article's source
+// data structure for storing the detail of article's source
 @Parcelize
 data class Source(
     val name: String?,

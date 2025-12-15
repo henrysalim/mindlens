@@ -8,11 +8,13 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 
 class ArticleCommentsRepository {
+    private val supabase = DatabaseConnection.supabase
     suspend fun postComment(comment: PostArticleComment) {
         // Insert the comment into the 'article_comments' table
         try {
-            DatabaseConnection.supabase.from("article_comments").insert(comment)
+            supabase.from("article_comments").insert(comment)
         } catch (e: Exception) {
+            // log the error if occurs
             Log.e("ERR_POST_COMMENT", e.message.toString())
         }
     }
@@ -20,7 +22,7 @@ class ArticleCommentsRepository {
     // Fetch comments for a specific article
     suspend fun getComments(newsUrl: String): List<GetArticleComment> {
         try {
-            val result = DatabaseConnection.supabase
+            val result = supabase
                 .from("article_comments")
                 .select(
                     columns = Columns.list(
@@ -28,10 +30,9 @@ class ArticleCommentsRepository {
                     )
                 ) { filter { eq("news_url", newsUrl) } }
 
-            Log.d("DEBUG_JOIN", result.data)
-
             return result.decodeList<GetArticleComment>()
         } catch (e: Exception) {
+            // log if any error ocurrs
             Log.e("ERROR_JOIN", "Error: ${e.message}")
             return emptyList()
         }

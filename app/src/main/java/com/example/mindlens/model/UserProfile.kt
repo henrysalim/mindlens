@@ -3,7 +3,7 @@ package com.example.mindlens.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// for representing user's profile object
+// for representing user's profile data as object
 @Serializable
 data class UserProfile(
     val id: String,

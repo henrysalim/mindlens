@@ -2,6 +2,7 @@ package com.example.mindlens.navigations
 
 import android.net.Uri
 
+// define the screens
 sealed class Screen(val route: String) {
     // Bottom Bar Tabs
     object Home : Screen("home")
@@ -21,8 +22,9 @@ sealed class Screen(val route: String) {
         fun createRoute(videoId: String, title: String, desc: String) =
             "video_player/$videoId/${Uri.encode(title)}/${Uri.encode(desc)}"
     }
+
+    // breathing exercise screen
     object BreathingExercise : Screen("breathing_exercise")
-    object ExerciseGuide : Screen("exercise_guide/{exerciseId}")
 
     // Diary Features
     object DiaryHistory : Screen("diary_history") // Rute untuk See All

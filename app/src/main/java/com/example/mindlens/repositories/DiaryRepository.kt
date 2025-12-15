@@ -12,6 +12,7 @@ class DiaryRepository {
     // get diary only for its user
     suspend fun getDiaryEntries(): List<DiaryEntry> {
         val userId = getLoggedInUserId()
+
         return try {
             supabase.from("diary_entries")
                 .select {
@@ -21,8 +22,9 @@ class DiaryRepository {
                 }
                 .decodeList<DiaryEntry>()
         } catch (e: Exception) {
+            // log if any error ocurrs
             Log.e("ERR_GET_DIARY", e.message.toString())
-            return emptyList()
+            return emptyList() // return empty list
         }
     }
 
@@ -31,6 +33,7 @@ class DiaryRepository {
         try {
             supabase.from("diary_entries").insert(entry)
         } catch (e: Exception) {
+            // log if any error ocurrs
             Log.e("ERR_CREATE_DIARY", e.message.toString())
         }
     }
@@ -42,6 +45,7 @@ class DiaryRepository {
                 filter { eq("id", entry.id) } // Cari berdasarkan ID
             }
         } catch (e: Exception) {
+            // log if any error ocurrs
             Log.e("ERR_UPDATE_DIARY", e.message.toString())
         }
     }
@@ -53,6 +57,7 @@ class DiaryRepository {
                 filter { eq("id", id) } // Hapus berdasarkan ID
             }
         } catch (e: Exception) {
+            // log if any error ocurrs
             Log.e("ERR_DELETE_DIARY", e.message.toString())
         }
     }

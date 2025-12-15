@@ -58,7 +58,7 @@ fun ArticleDetailScreen(
         viewModel.loadComments(article.url)
     }
 
-    // the view..
+    // the view...
     Scaffold(
         topBar = {
             // top bar to display back button and page title

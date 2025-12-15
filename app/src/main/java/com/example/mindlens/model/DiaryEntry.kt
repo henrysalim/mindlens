@@ -3,7 +3,7 @@ package com.example.mindlens.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// representing diary object
+// representing diary data as object
 @Serializable
 data class DiaryEntry(
     @SerialName("id")

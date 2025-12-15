@@ -1,6 +1,6 @@
-package com.example.mindlens.data
+package com.example.mindlens.dataClass
 
-// For storing recent scans with ML
+// Data structure for storing recent scans with ML
 data class HomeScanItem(
     val result: String,
     val date: String,

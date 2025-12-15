@@ -119,11 +119,11 @@ fun MoodScreen(
                 onDismissRequest = { showDeleteDialog = false },
                 containerColor = TechSurface,
                 title = {
-                    Text("Delete Entry?", fontWeight = FontWeight.Bold, color = TechTextPrimary)
+                    Text("Hapus data?", fontWeight = FontWeight.Bold, color = TechTextPrimary)
                 },
                 text = {
                     Text(
-                        "Are you sure you want to delete \"${entryToDelete?.title}\"? This action cannot be undone.",
+                        "Apakah Anda yakin ingin menghapus diary \"${entryToDelete?.title}\"? Aksi ini tidak dapat dibatalkan",
                         color = TechTextSecondary
                     )
                 },
@@ -134,14 +134,14 @@ fun MoodScreen(
                             viewModel.deleteDiaryEntry(entryToDelete!!.id)
                             entryToDelete = null
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350)) // Warna Merah
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
                     ) {
-                        Text("Delete", color = Color.White)
+                        Text("Hapus", color = Color.White)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel", color = TechTextSecondary)
+                        Text("Batal", color = TechTextSecondary)
                     }
                 }
             )

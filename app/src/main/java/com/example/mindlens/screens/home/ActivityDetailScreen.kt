@@ -16,7 +16,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.mindlens.data.allExercises
+import com.example.mindlens.dataClass.allExercises
 import com.example.mindlens.ui.*
 import com.example.mindlens.ui.components.home.ExerciseItemCard
 

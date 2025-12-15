@@ -3,7 +3,7 @@ package com.example.mindlens.helpers
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
-import com.example.mindlens.data.ClassificationResult
+import com.example.mindlens.dataClass.ClassificationResult
 import org.pytorch.IValue
 import org.pytorch.LiteModuleLoader
 import org.pytorch.Module
@@ -16,23 +16,24 @@ import kotlin.random.Random
 // for loading the ML model inside the app
 class DepressionClassifier(
     private val context: Context,
-    private val modelName: String = "efficientnet_mobile.ptl"
+    private val modelName: String = "efficientnet_mobile.ptl" // the model name inside main/assets folder
 ) {
     private var module: Module? = null
-    private val inputSize = 224
-
-
+    private val inputSize = 224 // image size
     private val temperature = 5.0f
 
     init {
+        // run this func when the screen opened
         setupModule()
     }
 
     private fun setupModule() {
         try {
+            // load the model
             val modelPath = assetFilePath(context, modelName)
             module = LiteModuleLoader.load(modelPath)
         } catch (e: Exception) {
+            // log the error if occurs
             Log.e("DepressionClassifier", "Error loading model", e)
         }
     }
@@ -67,7 +68,7 @@ class DepressionClassifier(
                 }
             }
 
-
+            // some calculations...
             val baseConfidence = (maxScore * 0.60f) + 0.35f
             val jitter = Random.nextFloat() * 0.04f - 0.02f
 

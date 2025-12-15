@@ -1,8 +1,8 @@
-package com.example.mindlens.data
+package com.example.mindlens.dataClass
 
 import com.example.mindlens.model.Article
 
-// For storing news response
+// Data structure for storing news response
 data class NewsApiResponse(
     val totalArticles: Int,
     val articles: List<Article>

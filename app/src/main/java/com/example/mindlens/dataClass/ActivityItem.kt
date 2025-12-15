@@ -1,9 +1,9 @@
-package com.example.mindlens.data
+package com.example.mindlens.dataClass
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
-// For storing various activities in Mind & Body section
+// Data structure for storing various activities in Mind & Body section
 data class ActivityItem(
     val title: String,
     val duration: String,

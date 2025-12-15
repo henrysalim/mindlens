@@ -1,5 +1,6 @@
-package com.example.mindlens.data
+package com.example.mindlens.dataClass
 
+// data structure for storing exercise data
 data class ExerciseMock(
     val id: String,
     val title: String,
@@ -10,6 +11,7 @@ data class ExerciseMock(
     val steps: List<String>
 )
 
+// list of exercises that user can do
 val allExercises = listOf(
     ExerciseMock(
         id = "yoga_1",
@@ -34,7 +36,7 @@ val allExercises = listOf(
         id = "med_1",
         title = "5 Min Mindfulness",
         duration = "5 min",
-        videoId = "HNab2YqCCiM", // Valid ID (diganti ke video mindfulness umum jika perlu)
+        videoId = "HNab2YqCCiM", // Valid ID
         imageUrl = "https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
         description = "Meditasi cepat untuk mengembalikan fokus dan ketenangan.",
         steps = listOf("Sit comfortably", "Focus on breath", "Let go of thoughts")
@@ -43,7 +45,7 @@ val allExercises = listOf(
         id = "med_2",
         title = "Deep Sleep Music",
         duration = "20 min",
-        videoId = "IVDuU3anYCI", // Valid ID (Video Relaxing)
+        videoId = "IVDuU3anYCI", // Valid ID
         imageUrl = "https://images.unsplash.com/photo-1515023115689-589c33041697?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
         description = "Musik relaksasi dan panduan visual untuk tidur nyenyak.",
         steps = listOf("Lie down", "Close eyes", "Relax muscles")
