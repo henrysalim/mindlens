@@ -28,6 +28,15 @@ import com.example.mindlens.ui.*
 import com.example.mindlens.ui.components.input.CustomTextField
 import com.example.mindlens.ui.components.element.CustomToast
 import com.example.mindlens.viewModels.ProfileViewModel
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.content.Context
+import android.os.Build
+import android.provider.MediaStore
+import androidx.compose.ui.graphics.asImageBitmap
+import java.io.ByteArrayOutputStream
+import android.util.Base64
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,21 +44,26 @@ fun EditProfileScreen(
     onBack: () -> Unit,
     profileViewModel: ProfileViewModel
 ) {
-    val context = LocalContext.current
-
-    // image state
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
     // Toast States
     var toastVisible by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("") }
 
     // Image Picker Launcher
+    val context = LocalContext.current
+    var croppedAvatar by remember { mutableStateOf<Bitmap?>(null) }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        selectedImageUri = uri
+    ) { uri ->
+        uri?.let {
+            val original = uriToBitmap(context, it)
+            val cropped = cropCenterSquare(original)
+            val compressed = compressBitmap(cropped)
+            croppedAvatar = compressed
+        }
     }
+
 
     Scaffold(
         topBar = {
@@ -89,35 +103,45 @@ fun EditProfileScreen(
                         .size(100.dp)
                         .clickable { launcher.launch("image/*") }
                 ) {
-                    // Logic: Show New Selection -> OR Show Saved Base64 -> OR Show Google URL -> OR Placeholder
-                    if (selectedImageUri != null) {
-                        AsyncImage(
-                            model = selectedImageUri,
-                            contentDescription = "Selected Avatar",
-                            modifier = Modifier.fillMaxSize().clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else if (!profileViewModel.currentAvatarBase64.value.isNullOrEmpty()) {
-                        val cleanBase64 = profileViewModel.currentAvatarBase64.value!!
+                    when {
+                        croppedAvatar != null -> {
+                            Image(
+                                bitmap = croppedAvatar!!.asImageBitmap(),
+                                contentDescription = "Cropped Avatar",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
 
-                        Image(
-                            bitmap = ImageUtils.base64ToBitmap(cleanBase64),
-                            contentDescription = "Saved Avatar",
-                            modifier = Modifier.fillMaxSize().clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        val username = profileViewModel.name.value
-                        AsyncImage(
-                            model = profileViewModel.googleAvatarUrl.value
-                                ?: "https://ui-avatars.com/api/?name=${username}&background=random&color=fff",
-                            contentDescription = "Avatar",
-                            modifier = Modifier.fillMaxSize().clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
+                        !profileViewModel.currentAvatarBase64.value.isNullOrEmpty() -> {
+                            Image(
+                                bitmap = ImageUtils
+                                    .base64ToBitmap(profileViewModel.currentAvatarBase64.value!!)
+                                    .asImageBitmap(),
+                                contentDescription = "Saved Avatar",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+
+                        else -> {
+                            val username = profileViewModel.name.value
+                            AsyncImage(
+                                model = profileViewModel.googleAvatarUrl.value
+                                    ?: "https://ui-avatars.com/api/?name=${username}&background=random&color=fff",
+                                contentDescription = "Avatar",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
 
-                    // Camera Icon Overlay
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -157,23 +181,22 @@ fun EditProfileScreen(
 
                 Button(
                     onClick = {
+                        val avatarBase64 = croppedAvatar?.let {
+                            ImageUtils.bitmapToBase64(it)
+                        }
+
                         profileViewModel.saveChanges(
                             context = context,
-                            newImageUri = selectedImageUri,
+                            newAvatarBase64 = avatarBase64,
                             onSuccess = {
-                                profileViewModel.showSuccessMessage.value = true
-
                                 onBack()
                             },
                             onError = { msg ->
-                                toastMessage = "Error: $msg"
+                                toastMessage = msg
                                 toastVisible = true
                             }
                         )
-                    },
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = TechPrimary, contentColor = Color.White),
-                    shape = RoundedCornerShape(12.dp)
+                    }
                 ) {
                     Text("Save Changes", fontWeight = FontWeight.Bold)
                 }
@@ -188,4 +211,39 @@ fun EditProfileScreen(
             onDismiss = { toastVisible = false }
         )
     }
+}
+
+fun cropCenterSquare(bitmap: Bitmap): Bitmap {
+    val width = bitmap.width
+    val height = bitmap.height
+
+    val newSize = minOf(width, height)
+
+    val xOffset = (width - newSize) / 2
+    val yOffset = (height - newSize) / 2
+
+    return Bitmap.createBitmap(
+        bitmap,
+        xOffset,
+        yOffset,
+        newSize,
+        newSize
+    )
+}
+
+fun uriToBitmap(context: Context, uri: Uri): Bitmap {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val source = ImageDecoder.createSource(context.contentResolver, uri)
+        ImageDecoder.decodeBitmap(source)
+    } else {
+        @Suppress("DEPRECATION")
+        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+    }
+}
+
+fun compressBitmap(bitmap: Bitmap, quality: Int = 85): Bitmap {
+    val outputStream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+    val byteArray = outputStream.toByteArray()
+    return BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
 }
