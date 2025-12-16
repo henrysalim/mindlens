@@ -18,7 +18,7 @@ android {
         }
     }
 
-    val mapsApiKey = props.getProperty("MAPS_API_KEY") ?: ""
+        val mapsApiKey = props.getProperty("MAPS_API_KEY") ?: ""
 
     namespace = "com.example.mindlens"
     compileSdk = 36
@@ -63,8 +63,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
-        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
+        manifestPlaceholders["MAPS_API_KEY"] = googleMapsApiKey
+        buildConfigField("String", "MAPS_API_KEY", "\"$googleMapsApiKey\"")
     }
 
     buildTypes {
@@ -76,7 +76,7 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
             buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
             buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
-            buildConfigField("String", "MAPS_API_KEY", "$googleMapsApiKey")
+            buildConfigField("String", "MAPS_API_KEY", "\"$googleMapsApiKey\"")
             buildConfigField("String", "ARTICLE_API_KEY", "$articleApiKey")
         }
         debug {
@@ -85,7 +85,7 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
             buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
             buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
-            buildConfigField("String", "MAPS_API_KEY", "$googleMapsApiKey")
+            buildConfigField("String", "MAPS_API_KEY", "\"$googleMapsApiKey\"")
             buildConfigField("String", "ARTICLE_API_KEY", "$articleApiKey")
         }
     }

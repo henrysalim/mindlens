@@ -83,6 +83,7 @@ private suspend fun getAccurateLocation(
 @Composable
 fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
 ) {
+    var originalPosition by remember { mutableStateOf<LatLng?>(null) }
     var editingDiaryId by remember { mutableStateOf<String?>(null) }
     var editingPosition by remember { mutableStateOf<LatLng?>(null) }
     var isLocationPermanentlyDenied by remember { mutableStateOf(false) }
@@ -94,8 +95,13 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
     var selectedDiaryId by remember { mutableStateOf<String?>(null) }
     var tooltipLatLng by remember { mutableStateOf<LatLng?>(null) }
     val scope = rememberCoroutineScope()
+    var committedPosition by remember { mutableStateOf<LatLng?>(null) }
     val selectedDiary = remember(state.entries, selectedDiaryId) {
         state.entries.find { it.id == selectedDiaryId }
+    }
+    var committedDiaryId by remember { mutableStateOf<String?>(null) }
+    var lastKnownPositions by remember {
+        mutableStateOf<Map<String, LatLng>>(emptyMap())
     }
 
     // Permission launcher
@@ -172,7 +178,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
         if (editingDiaryId != null) {
             Toast.makeText(
                 context,
-                "Geser pin untuk memperbarui lokasi emosi ini",
+                "Hold and drag this pin to update your mood location",
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -190,7 +196,11 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
         floatingOffset = Offset(point.x.toFloat(), point.y.toFloat())
     }
 
-    if (floatingOffset != null && selectedDiary != null) {
+    if (
+        editingDiaryId == null &&
+        floatingOffset != null &&
+        selectedDiary != null
+    ) {
         val offset = floatingOffset!!
         val diary = selectedDiary!!
         Box(
@@ -220,17 +230,30 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
 
                 Button(
                     onClick = {
-                        floatingOffset = null
                         editingDiaryId = selectedDiary!!.id
-                        editingPosition = LatLng(
-                            selectedDiary!!.latitude!!,
-                            selectedDiary!!.longitude!!
-                        )
+
+                        val startPos =
+                            lastKnownPositions[selectedDiary!!.id]
+                                ?: LatLng(
+                                    selectedDiary!!.latitude!!,
+                                    selectedDiary!!.longitude!!
+                                )
+
+                        originalPosition = startPos
+                        editingPosition = startPos
                     }
                 ) {
                     Text("Edit Location")
                 }
             }
+        }
+    }
+
+    LaunchedEffect(editingDiaryId) {
+        if (editingDiaryId != null) {
+            floatingOffset = null
+            selectedDiaryId = null
+            tooltipLatLng = null
         }
     }
 
@@ -256,13 +279,18 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
                     val position = LatLng(diary.latitude, diary.longitude)
                     val (iconRes, color) = ImageUtils.getMoodVectorIcon(diary.mood)
 
+                    val basePosition =
+                        lastKnownPositions[diary.id]
+                            ?: LatLng(diary.latitude!!, diary.longitude!!)
+
                     val markerPosition =
                         if (editingDiaryId == diary.id && editingPosition != null)
                             editingPosition!!
                         else
-                            position
+                            basePosition
 
-                    key(diary.id) {
+
+                    key(diary.id, editingDiaryId) {
                         val markerState = rememberMarkerState(
                             position = markerPosition
                         )
@@ -303,29 +331,60 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
             }
         }
         if (editingDiaryId != null) {
+
             FloatingActionButton(
                 onClick = {
-                    val savedId = editingDiaryId!!
+                    editingPosition = originalPosition
+
+                    editingDiaryId = null
+                    originalPosition = null
+                    floatingOffset = null
+                },
+                containerColor = CancelBtn,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 50.dp, end = 100.dp)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Cancel")
+            }
+
+
+            FloatingActionButton(
+                onClick = {
+                    val id = editingDiaryId!!
+                    val newPos = editingPosition!!
+
+                    lastKnownPositions =
+                        lastKnownPositions + (id to newPos)
 
                     viewModel.updateDiaryLocation(
-                        diaryId = savedId,
-                        lat = editingPosition!!.latitude,
-                        lng = editingPosition!!.longitude
+                        diaryId = id,
+                        lat = newPos.latitude,
+                        lng = newPos.longitude
                     )
 
                     editingDiaryId = null
                     editingPosition = null
-                    selectedDiaryId = null
-                    tooltipLatLng = null
-                    floatingOffset = null
+                    originalPosition = null
+
+                    Toast.makeText(
+                        context,
+                        "Your mood location has been successfully updated",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 100.dp),
+                    .padding(bottom = 50.dp, start = 100.dp),
                 containerColor = TechPrimary
             ) {
                 Icon(Icons.Default.Check, contentDescription = "Save Location")
             }
+        }
+
+        LaunchedEffect(state.entries) {
+            committedDiaryId = null
+            committedPosition = null
         }
 
         // Statistics card above the map
@@ -342,7 +401,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Emotional Journey Map", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TechTextPrimary)
-                Text("Jejak perasaanmu 7 hari terakhir", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text("Track your mood over the last 7 days", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Scrollable Row to fit 5 items in
