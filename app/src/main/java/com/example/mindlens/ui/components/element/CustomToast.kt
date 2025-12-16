@@ -37,7 +37,7 @@ fun CustomToast(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().padding(top = 50.dp),
+        modifier = Modifier.fillMaxSize().padding(top = 20.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         AnimatedVisibility(

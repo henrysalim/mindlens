@@ -148,7 +148,7 @@ fun RegisterOptionsScreen(
                 label = "Password",
                 value = password,
                 onValueChange = { password = it },
-                placeholder = "Must contain atleast 6 character",
+                placeholder = "Must contain at least 8 character",
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done,
                 isPassword = true
@@ -233,7 +233,7 @@ fun RegisterOptionsScreen(
                     containerColor = Color.Black,
                     contentColor = Color.White
                 ),
-                enabled = if(isLoading) false else true,
+                enabled = if (isLoading) false else true,
             ) {
                 if (isLoading) {
                     // displya circular indicator if still loading
@@ -275,7 +275,6 @@ fun RegisterOptionsScreen(
                     )
                 }
             }
-
             // toast to display messages
             CustomToast(
                 visible = showToast,

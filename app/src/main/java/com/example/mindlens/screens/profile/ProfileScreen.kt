@@ -74,7 +74,7 @@ fun ProfileScreen(
                     colors = CardDefaults.cardColors(containerColor = TechSurface)
                 ) {
                     Column(
-                        modifier = Modifier.padding(24.dp),
+                        modifier = Modifier.padding(24.dp).align(Alignment.CenterHorizontally),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         // Profile pict
@@ -128,19 +128,6 @@ fun ProfileScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = TechTextSecondary
                             )
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Stats Row
-                        // TODO: FINISH THIS
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            ProfileStat("12", "Scans")
-                            ProfileStat("85%", "Wellness")
-                            ProfileStat("24", "Diaries")
                         }
                     }
                 }

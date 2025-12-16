@@ -226,9 +226,6 @@ fun NativeLoginScreen(
                             popUpTo(Routes.NativeLogin) { inclusive = true }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        contentColor = Color.White
-                    ),
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
