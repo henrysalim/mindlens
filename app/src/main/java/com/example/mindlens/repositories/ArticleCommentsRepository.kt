@@ -26,13 +26,12 @@ class ArticleCommentsRepository {
                 .from("article_comments")
                 .select(
                     columns = Columns.list(
-                        "id", "comment", "user_id", "created_at", "news_url", "profiles(full_name, avatar)"
+                        "id", "comment", "user_id", "created_at", "news_url", "parent_id", "profiles(full_name, avatar)"
                     )
-                ) { filter { eq("news_url", newsUrl) } }
+                ) { filter { eq("news_url", newsUrl) } } // Ambil semua komen (parent & child)
 
             return result.decodeList<GetArticleComment>()
         } catch (e: Exception) {
-            // log if any error ocurrs
             Log.e("ERROR_JOIN", "Error: ${e.message}")
             return emptyList()
         }

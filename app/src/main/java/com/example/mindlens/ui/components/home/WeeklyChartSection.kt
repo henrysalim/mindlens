@@ -41,7 +41,7 @@ fun WeeklyChartSection(
     Column(modifier = Modifier.padding(horizontal = 24.dp).offset(y = (-30).dp)) {
         Text("Weekly Analytics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechTextPrimary)
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Rata-rata 7 Hari Terakhir:", style = MaterialTheme.typography.labelMedium, color = TechTextSecondary)
+        Text("7 Day Average:", style = MaterialTheme.typography.labelMedium, color = TechTextSecondary)
         Spacer(modifier = Modifier.height(10.dp))
         Text(averageMoodStatus, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TechPrimary)
         Spacer(modifier = Modifier.height(24.dp))
@@ -54,7 +54,7 @@ fun WeeklyChartSection(
         ) {
             if (weeklyData.all { it.score == 0f }) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Belum ada aktivitas minggu ini", color = TechTextSecondary)
+                    Text("No activity available in this week", color = TechTextSecondary)
                 }
             } else {
                 Box(modifier = Modifier.padding(16.dp).fillMaxSize()) {
