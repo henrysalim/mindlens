@@ -1,0 +1,23 @@
+package com.example.mindlens.helpers
+
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+// helper function to format date
+fun formatDate(date: String?): String {
+    val utcDateTime = LocalDateTime.parse(date)
+
+    // Assign UTC zone, then convert to UTC+7 (Asia/Jakarta)
+    val targetZonedTime = utcDateTime
+        .atZone(ZoneOffset.UTC)
+        .withZoneSameInstant(ZoneId.of("Asia/Jakarta"))
+
+    // Format the output
+    val formatter = DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale.ENGLISH)
+    val result = targetZonedTime.format(formatter)
+
+    return result
+}

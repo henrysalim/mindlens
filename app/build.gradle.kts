@@ -9,6 +9,17 @@ plugins {
 }
 
 android {
+
+    // Load properties
+    val props = Properties().apply {
+        val file = rootProject.file("local.properties")
+        if (file.exists()) {
+            load(file.inputStream())
+        }
+    }
+
+    val mapsApiKey = props.getProperty("MAPS_API_KEY") ?: ""
+
     namespace = "com.example.mindlens"
     compileSdk = 36
 
@@ -30,6 +41,10 @@ android {
         localProperties.getProperty("WEB_GOOGLE_CLIENT_ID") ?: error("WEB_GOOGLE_CLIENT_ID not found in local.properties")
     val androidGoogleClientID: String =
         localProperties.getProperty("ANDROID_GOOGLE_CLIENT_ID") ?: error("ANDROID_GOOGLE_CLIENT_ID not found in local.properties")
+    val googleMapsApiKey: String =
+        localProperties.getProperty("MAPS_API_KEY") ?: error("MAPS_API_KEY not found in local.properties")
+    val articleApiKey: String =
+        localProperties.getProperty("ARTICLE_API_KEY") ?: error("ARTICLE_API_KEY not found in local.properties")
 
     buildFeatures {
         viewBinding = true
@@ -47,6 +62,9 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseKey\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
     }
 
     buildTypes {
@@ -58,6 +76,8 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
             buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
             buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
+            buildConfigField("String", "MAPS_API_KEY", "$googleMapsApiKey")
+            buildConfigField("String", "ARTICLE_API_KEY", "$articleApiKey")
         }
         debug {
             buildConfigField("String", "SUPABASE_URL", "$supabaseUrl")
@@ -65,7 +85,8 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "$supabaseAnonKey")
             buildConfigField("String", "ANDROID_GOOGLE_CLIENT_ID", "$androidGoogleClientID")
             buildConfigField("String", "WEB_GOOGLE_CLIENT_ID", "$webGoogleClientID")
-
+            buildConfigField("String", "MAPS_API_KEY", "$googleMapsApiKey")
+            buildConfigField("String", "ARTICLE_API_KEY", "$articleApiKey")
         }
     }
     compileOptions {
@@ -89,6 +110,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -135,6 +157,9 @@ dependencies {
     // Google Maps Compose
     implementation("com.google.maps.android:maps-compose:6.12.0")
 
+    // buat google maps biar ga ngebug
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+
     // CameraX (For your ML Feature)
     val cameraxVersion = "1.5.1"
     implementation("androidx.camera:camera-core:$cameraxVersion")
@@ -150,11 +175,15 @@ dependencies {
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
 
     //MAPS
-    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("com.google.maps.android:maps-compose:6.12.0")
+// Atau versi terbaru yang Anda miliki
 
     implementation("com.google.android.gms:play-services-maps:18.2.0")
 
     implementation("org.osmdroid:osmdroid-android:6.1.18")
+
+    // PLACES API
+    implementation("com.google.android.libraries.places:places:3.4.0")
 
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -163,6 +192,12 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("io.github.jan-tennert.supabase:auth-kt:3.0.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
-    implementation("com.google.android.gms:play-services-location:21.0.1")
+
+
+    implementation("org.pytorch:pytorch_android_lite:1.13.1")
+    implementation("org.pytorch:pytorch_android_torchvision_lite:1.13.1")
+
+
+
 }
 

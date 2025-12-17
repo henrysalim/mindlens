@@ -12,13 +12,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
-import com.example.mindlens.Routes
-import com.example.mindlens.viewModel.AuthState
-import com.example.mindlens.viewModel.AuthViewModel
+import com.example.mindlens.navigations.Routes
+import com.example.mindlens.viewModels.AuthState
+import com.example.mindlens.viewModels.AuthViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.em
 import com.example.mindlens.ui.PrimaryGreen
 
 @Composable
@@ -28,21 +29,21 @@ fun SplashScreen(
 ) {
     val authState by viewModel.authState.collectAsState()
 
-    // 1. Create a state to track if the animation is done
+    // Create a state to track if the animation is done
     var isAnimationFinished by remember { mutableStateOf(false) }
 
-    // 1. Start the Timer (Visuals)
+    // Start the Timer
     LaunchedEffect(key1 = true) {
         delay(1500) // Minimum wait time (1.5 seconds)
         isAnimationFinished = true
     }
 
-    // 2. Start the Auth Check (Data)
+    // Start the Auth Check
     LaunchedEffect(key1 = true) {
         viewModel.checkAuthStatus()
     }
 
-    // 4. The Navigation Logic (Monitors BOTH Timer and Auth)
+    // Navigation Logic
     LaunchedEffect(isAnimationFinished, authState) {
         // Only proceed if the animation is done AND we are not loading
         if (isAnimationFinished && authState !is AuthState.Loading) {
@@ -58,20 +59,15 @@ fun SplashScreen(
                         popUpTo(Routes.Splash) { inclusive = true }
                     }
                 }
-                else -> { /* specific error handling if needed */ }
+                else -> {  }
             }
         }
     }
 
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
-        // Replace with your logo drawable
-//        Image(
-//            painter = painterResource(id = R.drawable.ic_diary_logo),
-//            contentDescription = "Logo"
-//        )
-        Text(text = "MindLens", fontWeight = FontWeight.Bold, color = PrimaryGreen)
+        Text(text = "MindLens", fontWeight = FontWeight.Bold, color = PrimaryGreen, fontSize = 8.em)
     }
 }
