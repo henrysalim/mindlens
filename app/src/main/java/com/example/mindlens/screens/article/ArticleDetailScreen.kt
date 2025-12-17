@@ -2,6 +2,7 @@ package com.example.mindlens.screens.article
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
@@ -22,26 +24,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.mindlens.model.Article
 import com.example.mindlens.ui.*
-import com.example.mindlens.ui.components.article.CommentItem
+import com.example.mindlens.ui.components.article.CommentTree
 import com.example.mindlens.ui.components.element.CustomToast
 import com.example.mindlens.viewModels.ArticleCommentsViewModel
-import androidx.core.net.toUri
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class) // for using TopAppBar
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticleDetailScreen(
     article: Article,
     onBack: () -> Unit,
     viewModel: ArticleCommentsViewModel = viewModel()
 ) {
-    // context
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    // State for Input
+    // State Input
     var commentText by remember { mutableStateOf("") }
 
     // Toast States
@@ -53,15 +56,16 @@ fun ArticleDetailScreen(
     val commentsList by viewModel.comments.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    // Load comments when this screen opens
+    // State Reply (Sedang membalas siapa?)
+    val replyingTo by viewModel.replyingTo.collectAsState()
+
+    // Load comments saat layar dibuka
     LaunchedEffect(article.url) {
         viewModel.loadComments(article.url)
     }
 
-    // the view...
     Scaffold(
         topBar = {
-            // top bar to display back button and page title
             TopAppBar(
                 title = { Text("Article Detail", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -82,11 +86,11 @@ fun ArticleDetailScreen(
                     .weight(1f)
                     .padding(horizontal = 16.dp)
             ) {
-                // Image and title
+                // --- BAGIAN KONTEN ARTIKEL ---
                 item {
                     Spacer(modifier = Modifier.height(24.dp))
                     AsyncImage(
-                        model = article.image ?: "https://via.placeholder.com/400" /* if image from API is null*/,
+                        model = article.image ?: "https://via.placeholder.com/400",
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -96,7 +100,6 @@ fun ArticleDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Source Badge
                     Surface(
                         color = TechPrimary.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(8.dp)
@@ -112,7 +115,6 @@ fun ArticleDetailScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // article title
                     Text(
                         text = article.title,
                         style = MaterialTheme.typography.headlineSmall,
@@ -121,16 +123,11 @@ fun ArticleDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // article published at date
                     Text(text = article.publishedAt.take(10), color = TechTextSecondary, fontSize = 14.sp)
-
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // divider
                     HorizontalDivider(color = Color.LightGray)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Content
                     Text(
                         text = article.description ?: "No description available.",
                         style = MaterialTheme.typography.bodyLarge,
@@ -140,7 +137,6 @@ fun ArticleDetailScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // main article content
                     Text(
                         text = article.content ?: "",
                         style = MaterialTheme.typography.bodyMedium,
@@ -149,7 +145,6 @@ fun ArticleDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Open in browser
                     Button(
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, article.url.toUri())
@@ -164,95 +159,127 @@ fun ArticleDetailScreen(
                         Text("Read Full Article in Browser")
                     }
 
-                    // Comments section
                     Spacer(modifier = Modifier.height(32.dp))
                     Text(
-                        "Comments (${commentsList.size})",
+                        "Comments",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Comments list
+                // --- LIST KOMENTAR (NESTED / BERTINGKAT) ---
                 items(commentsList) { comment ->
-                    // call CommentItem component to display each comment
-                    CommentItem(comment)
+                    CommentTree(
+                        comment = comment,
+                        onReplyClick = { parentComment ->
+                            viewModel.setReplyingTo(parentComment)
+                        }
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                item { Spacer(modifier = Modifier.height(80.dp)) } // Spacer bawah
+                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
 
-            // Comment input
+            // --- INPUT BAR ---
             Surface(
                 shadowElevation = 16.dp,
                 color = TechSurface,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // comment input field
-                    OutlinedTextField(
-                        value = commentText,
-                        onValueChange = { commentText = it },
-                        placeholder = { Text("Write a comment...") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = TechPrimary,
-                            unfocusedBorderColor = Color.LightGray
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    // Submit
-                    IconButton(
-                        onClick = {
-                            if (commentText.isNotBlank()) {
-                                viewModel.sendComment(
-                                    newsUrl = article.url,
-                                    commentText = commentText,
-                                    onSuccess = {
-                                        // Success toast
-                                        commentText = "" // Clear input
-                                        toastMessage = "Comment posted!"
-                                        isToastError = false
-                                        toastVisible = true
-                                    },
-                                    onError = { error ->
-                                        // Error toast
-                                        toastMessage = error
-                                        isToastError = true
-                                        toastVisible = true
-                                    }
-                                )
-                            }
-                        },
-                        modifier = Modifier.background(TechPrimary, CircleShape)
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp).padding(4.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
+                Column {
+                    // 1. Indikator Reply (Muncul jika sedang me-reply seseorang)
+                    if (replyingTo != null) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFEEEEEE))
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Replying to ${replyingTo?.profile?.fullName ?: "Anonymous"}...",
+                                fontSize = 12.sp,
+                                color = Color.Gray
                             )
-                        } else {
-                            Icon(Icons.Default.Send, null, tint = Color.White)
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cancel Reply",
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { viewModel.setReplyingTo(null) },
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+
+                    // 2. Text Field
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = commentText,
+                            onValueChange = { commentText = it },
+                            placeholder = {
+                                Text(if (replyingTo != null) "Write a reply..." else "Write a comment...")
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = TechPrimary,
+                                unfocusedBorderColor = Color.LightGray
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Tombol Kirim
+                        IconButton(
+                            onClick = {
+                                if (commentText.isNotBlank()) {
+                                    viewModel.sendComment(
+                                        newsUrl = article.url,
+                                        commentText = commentText,
+                                        onSuccess = {
+                                            commentText = ""
+                                            viewModel.setReplyingTo(null)
+                                            toastMessage = "Comment posted!"
+                                            isToastError = false
+                                            toastVisible = true
+                                        },
+                                        onError = { error ->
+                                            toastMessage = error
+                                            isToastError = true
+                                            toastVisible = true
+                                        }
+                                    )
+                                }
+                            },
+                            modifier = Modifier.background(TechPrimary, CircleShape)
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp).padding(4.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(Icons.Default.Send, null, tint = Color.White)
+                            }
                         }
                     }
                 }
             }
         }
 
-        // to display toast after user submit comment
+        // --- TOAST NOTIFIKASI ---
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 16.dp)
-                .statusBarsPadding(), // Ensures it doesn't hide behind status bar
+                .statusBarsPadding(),
             contentAlignment = Alignment.TopCenter
         ) {
             CustomToast(

@@ -172,7 +172,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
         if (editingDiaryId != null) {
             Toast.makeText(
                 context,
-                "Geser pin untuk memperbarui lokasi emosi ini",
+                "Drag the pin to update this emotional location",
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -342,7 +342,7 @@ fun PsychologistMapScreen(viewModel: HomeViewModel = viewModel(factory = HomeVie
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Emotional Journey Map", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TechTextPrimary)
-                Text("Jejak perasaanmu 7 hari terakhir", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text("Your emotional journey over the last 7 days", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Scrollable Row to fit 5 items in

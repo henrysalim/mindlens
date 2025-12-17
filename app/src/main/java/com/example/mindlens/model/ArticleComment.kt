@@ -2,6 +2,7 @@ package com.example.mindlens.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 // model to get the related commenter
 @Serializable
@@ -31,11 +32,16 @@ data class GetArticleComment(
     @SerialName("created_at")
     val createdAt: String?,
 
+    @SerialName("parent_id")
+    val parentId: String? = null,
+
     @SerialName("profiles")
-    val profile: Profile? = null
+    val profile: Profile? = null,
+
+    @Transient
+    val replies: List<GetArticleComment> = emptyList()
 )
 
-// model to represent the comment (POST)
 @Serializable
 data class PostArticleComment(
     @SerialName("id")
@@ -50,6 +56,9 @@ data class PostArticleComment(
     @SerialName("user_id")
     val user_id: String?,
 
+    @SerialName("parent_id")
+    val parentId: String? = null,
+
     @SerialName("created_at")
-    val createdAt: String?,
-)
+    val createdAt: String?, )
+

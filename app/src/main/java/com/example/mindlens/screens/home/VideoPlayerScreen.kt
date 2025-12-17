@@ -69,7 +69,7 @@ fun VideoPlayerScreen(
                 if (isPlayerError) {
                     // Error fallback display
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Video tidak dapat diputar di sini.", color = Color.White)
+                        Text("The video cannot be played here.", color = Color.White)
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             onClick = {
@@ -82,7 +82,7 @@ fun VideoPlayerScreen(
                         ) {
                             Icon(Icons.Default.OpenInNew, null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Buka di YouTube App")
+                            Text("Open in YouTube App")
                         }
                     }
                 } else {
@@ -122,7 +122,7 @@ fun VideoPlayerScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Tonton langsung di YouTube")
+                    Text("Watch on YouTube")
                 }
             }
         }
