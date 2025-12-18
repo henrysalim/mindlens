@@ -240,7 +240,7 @@ fun RegisterOptionsScreen(
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
                     // display text if not in loading state
-                    Text("Log In")
+                    Text("Register")
                 }
             }
 
