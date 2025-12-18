@@ -31,7 +31,7 @@ fun HistoryItemCard(
     item: ScanHistoryItem,
     onDeleteClick: (String) -> Unit
 ) {
-    val isRisk = item.result.contains("Depresi", ignoreCase = true) || item.result == "1"
+    val isRisk = item.result.contains("Depressed", ignoreCase = true) || item.result == "1"
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
