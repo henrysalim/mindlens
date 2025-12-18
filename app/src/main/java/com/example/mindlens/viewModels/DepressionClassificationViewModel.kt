@@ -88,7 +88,7 @@ class DepressionClassifierViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e("ERR_LOAD_HIST", e.message.toString())
-                _toastMessage.value = "Gagal memuat riwayat!"
+                _toastMessage.value = "Failed loading recent scans!"
             } finally {
                 _isHistoryLoading.value = false
             }
@@ -147,7 +147,7 @@ class DepressionClassifierViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e("ERR_ANALYZE_IMG", e.message.toString())
-                _toastMessage.value = "Gagal menganalisis gambar!"
+                _toastMessage.value = "Failed to analyze image!"
             } finally {
                 _isAnalyzing.value = false
             }
@@ -161,10 +161,10 @@ class DepressionClassifierViewModel : ViewModel() {
                 loadHistory()
                 if (_analysisResult.value?.id == id) _analysisResult.value = null
                 _isToastVisible.value = true
-                _toastMessage.value = "Riwayat berhasil dihapus!"
+                _toastMessage.value = "Scan deleted successfully!"
             } catch (e: Exception) {
                 Log.e("ERR_DELETE_SCAN", e.message.toString())
-                _toastMessage.value = "Gagal menghapus riwayat!"
+                _toastMessage.value = "Failed to delete scan!"
             }
         }
     }
@@ -176,10 +176,10 @@ class DepressionClassifierViewModel : ViewModel() {
                 _scanHistory.value = emptyList() // Clear immediately for responsiveness
                 _analysisResult.value = null
                 _isToastVisible.value = true
-                _toastMessage.value = "Semua riwayat scan berhasil dihapus!"
+                _toastMessage.value = "Recent Scans deleted successfully!"
             } catch (e: Exception) {
                 Log.e("ERR_DEL_ALL_SCANS", e.message.toString())
-                _toastMessage.value = "Gagal menghapus semua history!"
+                _toastMessage.value = "Failed to delete recent scans!"
             }
         }
     }
