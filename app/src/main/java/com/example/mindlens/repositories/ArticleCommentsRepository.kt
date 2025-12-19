@@ -6,6 +6,7 @@ import com.example.mindlens.model.PostArticleComment
 import com.example.mindlens.supabase.DatabaseConnection
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 
 class ArticleCommentsRepository {
     private val supabase = DatabaseConnection.supabase
@@ -27,8 +28,11 @@ class ArticleCommentsRepository {
                 .select(
                     columns = Columns.list(
                         "id", "comment", "user_id", "created_at", "news_url", "parent_id", "profiles(full_name, avatar)"
-                    )
-                ) { filter { eq("news_url", newsUrl) } } // Ambil semua komen (parent & child)
+                    ),
+                ) {
+                    filter { eq("news_url", newsUrl) }
+                    order("created_at", Order.ASCENDING)
+                }
 
             return result.decodeList<GetArticleComment>()
         } catch (e: Exception) {

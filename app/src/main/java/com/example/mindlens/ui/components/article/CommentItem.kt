@@ -1,5 +1,6 @@
 package com.example.mindlens.ui.components.article
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,13 +32,13 @@ fun CommentTree(
         // Render Parent Comment
         CommentItem(comment = comment, onReplyClick = onReplyClick)
 
-        // Render Replies (Anak-anaknya) dengan Indentation (Padding Kiri)
+        // Render Replies with indent
         if (comment.replies.isNotEmpty()) {
             Column(modifier = Modifier.padding(start = 48.dp, top = 8.dp)) {
                 comment.replies.forEach { reply ->
                     CommentItem(
                         comment = reply,
-                        onReplyClick = onReplyClick, // Reply ke reply juga bisa
+                        onReplyClick = onReplyClick,
                         isReplyItem = true
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -61,7 +62,6 @@ fun CommentItem(
     val fontSize = if (isReplyItem) 13.sp else 14.sp
 
     Row(verticalAlignment = Alignment.Top) {
-        // --- AVATAR SECTION ---
         Box(
             modifier = Modifier.size(avatarSize).clip(CircleShape).background(Color.LightGray),
             contentAlignment = Alignment.Center
@@ -86,7 +86,6 @@ fun CommentItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // --- CONTENT SECTION ---
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(userName, fontWeight = FontWeight.Bold, fontSize = fontSize)
@@ -97,15 +96,17 @@ fun CommentItem(
             Text(comment.comment, fontSize = fontSize, color = TechTextPrimary)
 
             // Tombol Reply
-            Text(
-                text = "Reply",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Gray,
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .clickable { onReplyClick(comment) } // Trigger event reply
-            )
+            if (comment.parentId.isNullOrEmpty()) {
+                Text(
+                    text = "Reply",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray,
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .clickable { onReplyClick(comment) } // Trigger event reply
+                )
+            }
         }
     }
 }

@@ -17,7 +17,6 @@ class ArticleCommentsViewModel: ViewModel() {
 
     private val _comments = MutableStateFlow<List<GetArticleComment>>(emptyList())
     val comments = _comments.asStateFlow()
-    val replies: List<GetArticleComment> = emptyList()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
@@ -46,25 +45,19 @@ class ArticleCommentsViewModel: ViewModel() {
         }
     }
 
-    // --- PERBAIKAN UTAMA DI SINI ---
     private fun organizeComments(rawList: List<GetArticleComment>): List<GetArticleComment> {
-        // 1. Pisahkan mana Parent (parentId null) dan mana Child (ada parentId)
-        //    Partition lebih efisien daripada filter berulang-ulang
         val (parents, children) = rawList.partition { it.parentId == null }
 
-        // 2. Kelompokkan children berdasarkan parentId mereka
-        //    Hasilnya Map<String, List<GetArticleComment>>
         val childrenMap = children.groupBy { it.parentId }
 
-        // 3. Map Parent menjadi OBJEK BARU dengan replies yang sudah diisi
         return parents
             .map { parent ->
                 val myChildren = childrenMap[parent.id]
-                    ?.sortedBy { it.createdAt } // Urutkan reply dari terlama ke terbaru
+                    ?.sortedBy { it.createdAt }
                     ?: emptyList()
                 parent.copy(replies = myChildren)
             }
-            .sortedByDescending { it.createdAt } // Urutkan komentar utama dari terbaru
+            .sortedByDescending { it.createdAt }
     }
 
     fun sendComment(
@@ -74,7 +67,7 @@ class ArticleCommentsViewModel: ViewModel() {
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
-            _isLoading.value = true // Opsional: Tampilkan loading saat mengirim
+            _isLoading.value = true
             try {
                 val currentUser = DatabaseConnection.supabase.auth.currentUserOrNull()?.id
                 if (currentUser == null) {
@@ -101,9 +94,7 @@ class ArticleCommentsViewModel: ViewModel() {
                 // 2. Reset state reply
                 _replyingTo.value = null
 
-                // 3. Refresh data agar sinkron
-                // Supabase kadang butuh mili-detik agar data tersedia di query select
-                // Jika masih gagal muncul, kita bisa update list lokal secara manual (Optimistic Update)
+                // 3. Refresh data
                 loadComments(newsUrl)
 
                 onSuccess()
