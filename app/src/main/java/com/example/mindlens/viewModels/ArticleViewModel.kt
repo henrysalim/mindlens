@@ -82,4 +82,5 @@ class ArticleViewModel : ViewModel() {
         currentPage = 1
         fetchArticles()
     }
+
 }

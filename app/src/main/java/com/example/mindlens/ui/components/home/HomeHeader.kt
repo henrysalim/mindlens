@@ -58,15 +58,7 @@ fun HomeHeader(onPanicClick: () -> Unit, username: String) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
-                Button(
-                    onClick = onPanicClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350)),
-                    shape = CircleShape,
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(Icons.Default.Sos, contentDescription = "SOS", tint = Color.White)
-                }
+//
             }
         }
     }

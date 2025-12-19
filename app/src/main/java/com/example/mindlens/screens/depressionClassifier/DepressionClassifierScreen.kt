@@ -121,8 +121,8 @@ fun DepressionClassifierScreen(
         AlertDialog(
             onDismissRequest = { pendingDeleteId = null },
             containerColor = TechSurface,
-            title = { Text("Hapus Riwayat?", fontWeight = FontWeight.Bold, color = TechTextPrimary) },
-            text = { Text("Riwayat scan ini akan dihapus permanen dan tidak dapat dibatalkan.") },
+            title = { Text("Clear this Scan?", fontWeight = FontWeight.Bold, color = TechTextPrimary) },
+            text = { Text("This scan will be deleted. This action cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -130,10 +130,10 @@ fun DepressionClassifierScreen(
                         pendingDeleteId = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
-                ) { Text("Hapus") }
+                ) { Text("Clear") }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeleteId = null }) { Text("Batal", color = TechTextSecondary) }
+                TextButton(onClick = { pendingDeleteId = null }) { Text("Cancel", color = TechTextSecondary) }
             }
         )
     }
@@ -141,18 +141,20 @@ fun DepressionClassifierScreen(
     if (showDeleteAllConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteAllConfirm = false },
-            title = { Text("Hapus semua riwayat?") },
-            text = { Text("Semua riwayat scan akan dihapus permanen.") },
+            containerColor = TechSurface,
+            title = { Text("Clear All?", fontWeight = FontWeight.Bold, color = TechTextPrimary) },
+            text = { Text("All recent scans will be deleted. This action cannot be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.deleteAllScans()
                         showDeleteAllConfirm = false
-                    }
-                ) { Text("Hapus Semua") }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
+                ) { Text("Delete All") }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteAllConfirm = false }) { Text("Batal") }
+                TextButton(onClick = { showDeleteAllConfirm = false }) { Text("Cancel", color = TechTextSecondary) }
             }
         )
     }

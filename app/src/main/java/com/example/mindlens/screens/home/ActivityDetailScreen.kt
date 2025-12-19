@@ -36,7 +36,7 @@ fun ActivityDetailScreen(
 
     // Dynamic header image
     val heroImage = when(activityType) {
-        "Yoga" -> "https://images.unsplash.com/photo-1599447421405-075710062669?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"
+        "Yoga" -> "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=2120&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
         "Meditation" -> "https://images.unsplash.com/photo-1528319725582-ddc096101511?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"
         else -> "https://images.unsplash.com/photo-1506126613408-eca07ce68773?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"
     }

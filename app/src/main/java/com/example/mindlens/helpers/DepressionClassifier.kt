@@ -81,7 +81,7 @@ class DepressionClassifier(
             Log.d("DepressionClassifier", "Raw: $maxScore -> Final: $finalConfidence")
 
             // Label logic
-            val label = if (maxIndex % 2 == 0) "Normal / Healthy" else "Indicated Depression!"
+            val label = if (maxIndex % 2 == 0) "Normal / Healthy" else "Depressed"
 
             return ClassificationResult(label, finalConfidence)
 

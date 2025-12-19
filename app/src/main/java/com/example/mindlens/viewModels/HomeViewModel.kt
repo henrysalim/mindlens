@@ -284,15 +284,15 @@ class HomeViewModel(
     }
 
     private fun calculateAverageMoodString(entries: List<DiaryEntry>): String {
-        if (entries.isEmpty()) return "No data available"
+        if (entries.isEmpty()) return "No Data Available"
         val totalScore = entries.map { getMoodScore(it.mood) }.sum()
         val avg = totalScore / entries.size
         return when {
             avg >= 0.8f -> "Very Happy! 🤩"
-            avg >= 0.6f -> "Happy 🙂"
-            avg >= 0.4f -> "Normal 😐"
-            avg >= 0.2f -> "Not Happy ☁"
-            else -> "Sad 😢"
+            avg >= 0.6f -> "Happy! 🙂"
+            avg >= 0.4f -> "Neutral 😐"
+            avg >= 0.2f -> "Low Energy ☁"
+            else -> "Feeling Sad 😢"
         }
     }
 

@@ -10,9 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.SentimentSatisfied
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -30,9 +30,9 @@ import com.example.mindlens.ui.TechTextSecondary
 
 @Composable
 fun ResultDashboard(result: ScanHistoryItem) {
-    val isPositive = result.result.contains("Depresi", ignoreCase = true) || result.result == "1"
+    val isPositive = result.result.contains("Depressed", ignoreCase = true) || result.result == "1"
     val color = if (isPositive) Color(0xFFEF5350) else Color(0xFF66BB6A)
-    val icon = if (isPositive) Icons.Default.Warning else Icons.Default.CheckCircle
+    val icon = if (isPositive) Icons.Default.Close else Icons.Default.CheckCircle
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
