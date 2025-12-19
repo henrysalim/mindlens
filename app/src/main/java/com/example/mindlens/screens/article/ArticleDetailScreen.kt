@@ -86,7 +86,7 @@ fun ArticleDetailScreen(
                     .weight(1f)
                     .padding(horizontal = 16.dp)
             ) {
-                // --- BAGIAN KONTEN ARTIKEL ---
+                // Article content
                 item {
                     Spacer(modifier = Modifier.height(24.dp))
                     AsyncImage(
@@ -168,7 +168,7 @@ fun ArticleDetailScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // --- LIST KOMENTAR (NESTED / BERTINGKAT) ---
+                // Comments List
                 items(commentsList) { comment ->
                     CommentTree(
                         comment = comment,
