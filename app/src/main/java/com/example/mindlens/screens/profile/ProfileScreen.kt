@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -89,7 +90,9 @@ fun ProfileScreen(
                                 val cleanBase64 = profileViewModel.currentAvatarBase64.value!!
 
                                 Image(
-                                    bitmap = ImageUtils.base64ToBitmap(cleanBase64),
+                                    bitmap = ImageUtils
+                                        .base64ToBitmap(cleanBase64)
+                                        .asImageBitmap(),
                                     contentDescription = "Avatar",
                                     modifier = Modifier.fillMaxSize().clip(CircleShape),
                                     contentScale = ContentScale.Crop

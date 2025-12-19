@@ -49,15 +49,26 @@ class ProfileViewModel : ViewModel() {
     }
 
     // Save the changes
-    fun saveChanges(context: Context, newImageUri: Uri?, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun saveChanges(
+        context: Context,
+        newAvatarBase64: String?,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
         viewModelScope.launch {
             isLoading.value = true
             try {
-                val newBase64 = if (newImageUri != null) {
-                    ImageUtils.uriToBase64(context, newImageUri)
-                } else null
 
-                repository.updateProfile(name.value, bio.value, newBase64)
+                repository.updateProfile(
+                    name = name.value,
+                    bio = bio.value,
+                    base64Image = newAvatarBase64
+                )
+
+                // update local state biar langsung sinkron
+                if (newAvatarBase64 != null) {
+                    currentAvatarBase64.value = newAvatarBase64
+                }
 
                 onSuccess()
 
@@ -69,4 +80,5 @@ class ProfileViewModel : ViewModel() {
             }
         }
     }
+
 }

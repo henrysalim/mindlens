@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,7 +69,7 @@ fun CommentItem(
             if (avatarBase64 != null) {
                 val bitmap = ImageUtils.base64ToBitmap(avatarBase64)
                 Image(
-                    bitmap = bitmap,
+                    bitmap = bitmap.asImageBitmap(),
                     contentDescription = "Avatar",
                     modifier = Modifier.fillMaxSize().clip(CircleShape),
                     contentScale = ContentScale.Crop

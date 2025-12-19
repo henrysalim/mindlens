@@ -8,6 +8,6 @@ data class HomeUiState(
     val weeklyStats: List<WeeklyData> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val averageMood: String = "Belum ada data",
+    val averageMood: String = "No data available",
     val recentScans: List<ScanHistoryItem> = emptyList()
 )

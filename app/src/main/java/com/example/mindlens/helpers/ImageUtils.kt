@@ -56,9 +56,16 @@ object ImageUtils {
     }
 
     // Helper to decode Base64 back to ImageBitmap for display
-    fun base64ToBitmap(base64Str: String): ImageBitmap {
-        val decodedBytes = Base64.decode(base64Str, Base64.DEFAULT)
-        return BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size).asImageBitmap()
+    fun bitmapToBase64(bitmap: Bitmap): String {
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+        val bytes = outputStream.toByteArray()
+        return Base64.encodeToString(bytes, Base64.DEFAULT)
+    }
+
+    fun base64ToBitmap(base64: String): Bitmap {
+        val decoded = Base64.decode(base64, Base64.DEFAULT)
+        return BitmapFactory.decodeByteArray(decoded, 0, decoded.size)
     }
 
     // decode bitmap from URI
