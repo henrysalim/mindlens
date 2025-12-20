@@ -62,5 +62,5 @@ Untuk memudahkan pengujian tanpa perlu melakukan registrasi akun baru, silakan g
 * **Arsitektur:** MVVM (Model-View-ViewModel)
 * **UI Toolkit:** Jetpack Compose
 * **Machine Learning:** PyTorch Mobile (EfficientNet Architecture)
-* **Backend & Database:** Supabase (PostgreSQL, Auth, Storage)
+* **Backend & Database:** Supabase (PostgreSQL, Auth)
 * **Networking:** Ktor Client / Supabase SDK
