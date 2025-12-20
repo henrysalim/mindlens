@@ -8,7 +8,7 @@ Universitas Multimedia Nusantara (2025)
 ---
 
 ## 👥 ANGGOTA KELOMPOK
-Berikut adalah daftar anggota kelompok sesuai laporan resmi:
+Berikut adalah daftar anggota kelompok:
 
 1. **Henry Salim** (00000079925)
 2. **Livia Junike** (00000076451)
